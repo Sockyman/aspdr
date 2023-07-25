@@ -2,4 +2,5 @@ build/
 scanner.cpp
 parser.cpp
 parser.hpp
+location.hh
 
