@@ -3,12 +3,13 @@ TARGET := aspdr
 BUILD_DIR := build
 
 SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
-	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp
+	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp Location.cpp \
+	Section.cpp
 
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
 
-CXXFLAGS := -std=c++20 -g -c -MMD -MP -Wall -pedantic
+CXXFLAGS := -std=c++20 -g -c -MD -MP -Wall -pedantic -O0
 LDFLAGS := -lspdr-firmware
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)

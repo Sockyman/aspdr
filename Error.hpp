@@ -7,12 +7,21 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <vector>
 
-#define ASSEMBLER_ERROR(MESSAGE) \
-    { \
+#define ASSEMBLER_ERROR(MESSAGE) { \
         std::stringstream ss{}; \
-        ss << __FILE__ << ":" << __LINE__ << ": " << __PRETTY_FUNCTION__ << ": " << (MESSAGE); \
+        ss << __FILE__ << ":" \
+            << __LINE__ << ": " \
+            << __PRETTY_FUNCTION__ << ": " \
+            << (MESSAGE); \
         throw AssemblerError{ss.str()}; \
+    }
+
+#define ASSEMBLER_ASSERT(ASSERTION, MESSAGE) { \
+        if (!(ASSERTION)) { \
+            ASSEMBLER_ERROR((MESSAGE)); \
+        } \
     }
 
 class AssemblerError : public std::exception {
@@ -22,31 +31,45 @@ public:
     std::string message;
 };
 
-class Error : public std::exception {
+class Error {
 private:
 public:
+    enum class Level {
+        Pass,
+        Fatal,
+    };
+
+    Error::Level level;
     std::optional<Location> location;
     std::string message;
 
-    Error(Location location, std::string message);
-    Error(std::string message);
+    Error(Error::Level level, Location location, std::string message);
+    Error(Error::Level level, std::string message);
 
-    virtual const char* what() const noexcept override;
     void display();
+
+    bool operator==(const Error& other) const;
 };
 
-std::ostream& operator<<(std::ostream& stream, Error& error);
+std::ostream& operator<<(std::ostream& stream, const Error& error);
 
-class FatalError : public Error {
+class ErrorList {
+private:
 public:
-    FatalError(Location location, std::string message);
-    FatalError(std::string message);
-};
+    std::vector<Error> errors;
 
-class PassError : public Error {
-public:
-    PassError(Location location, std::string message);
-    PassError(std::string message);
+    ErrorList(Error error);
+    ErrorList();
+    ErrorList(std::vector<Error> errors);
+
+    bool hasErrors() const;
+    bool hasFatalErrors() const;
+    void display(std::ostream& stream) const;
+
+    ErrorList join(const ErrorList& list) const;
+    void insert(const ErrorList& list);
+
+    bool operator==(const ErrorList& list) const;
 };
 
 #endif

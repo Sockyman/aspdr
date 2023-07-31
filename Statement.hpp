@@ -4,6 +4,7 @@
 #include "Expression.hpp"
 #include "Identifier.hpp"
 #include "Location.hpp"
+#include "Result.hpp"
 #include <SpdrFirmware/Instruction.hpp>
 #include <SpdrFirmware/Mode.hpp>
 #include <string>
@@ -13,46 +14,60 @@ class Context;
 
 class Statement {
 public:
-    Location location;
+    const Location location;
+
     Statement();
     Statement(Location location);
-    virtual void assemble(Context& context) = 0;
+    virtual VoidResult assemble(Context& context) = 0;
 };
 
 class InstructionStatement : public Statement {
 private:
-    void assembleAddress(Context& context, Address& address, Expression* expr);
+    VoidResult assembleAddress(
+        Context& context,
+        const Address& address,
+        const Expression* expr);
+
 public:
-    Instruction instruction;
-    std::array<Expression*, 2> expressions;
+    const Instruction instruction;
+    const std::array<Expression*, 2> expressions;
 
     InstructionStatement();
     InstructionStatement(Location location, Instruction instruction);
-    InstructionStatement(Location location, Instruction instruction, Expression* expr);
-    InstructionStatement(Location location, Instruction instruction, Expression* expr0, Expression* expr1);
 
-    virtual void assemble(Context& context) override;
+    InstructionStatement(
+        Location location,
+        Instruction instruction,
+        Expression* expr);
+
+    InstructionStatement(
+        Location location,
+        Instruction instruction,
+        Expression* expr0,
+        Expression* expr1);
+
+    virtual VoidResult assemble(Context& context) override;
 };
 
 class LabelStatement : public Statement {
 public:
-    Identifier id;
+    const Identifier id;
 
     LabelStatement();
     LabelStatement(Location location, Identifier id);
 
-    virtual void assemble(Context& context) override;
+    virtual VoidResult assemble(Context& context) override;
 };
 
 class SymbolStatement : public Statement {
 public:
-    Identifier id;
-    Expression* expr;
+    const Identifier id;
+    const Expression* expr;
 
     SymbolStatement();
     SymbolStatement(Location location, Identifier id, Expression* expr);
 
-    virtual void assemble(Context& context) override;
+    virtual VoidResult assemble(Context& context) override;
 };
 
 #endif

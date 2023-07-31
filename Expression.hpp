@@ -3,6 +3,7 @@
 
 #include "Identifier.hpp"
 #include "Location.hpp"
+#include "Result.hpp"
 #include <cstdint>
 #include <memory>
 #include <exception>
@@ -14,7 +15,7 @@ private:
 public:
     Location location;
     Expression(Location location);
-    virtual std::int64_t evaluate(Context& context) = 0;
+    virtual Result<std::int64_t> evaluate(const Context& context) const = 0;
 };
 
 enum class Binary {
@@ -43,10 +44,12 @@ private:
     Binary operation;
     Expression* operand0;
     Expression* operand1;
+
+    static Result<std::int64_t> performOperation(const Location& location, Binary operation, std::int64_t x, std::int64_t y);
 public:
     BinaryExpression(Location location, Binary operation, 
         Expression* operand0, Expression* operand1);
-    virtual std::int64_t evaluate(Context& context) override;
+    virtual Result<std::int64_t> evaluate(const Context& context) const override;
 };
 
 enum class Unary {
@@ -61,7 +64,7 @@ private:
     Expression* operand;
 public:
     UnaryExpression(Location location, Unary operation, Expression* operand);
-    virtual std::int64_t evaluate(Context& context) override;
+    virtual Result<std::int64_t> evaluate(const Context& context) const override;
 };
 
 class SymbolicExpression : public Expression {
@@ -70,7 +73,7 @@ public:
     Identifier identifier;
 
     SymbolicExpression(Location location, Identifier identifier);
-    virtual std::int64_t evaluate(Context& context) override;
+    virtual Result<std::int64_t> evaluate(const Context& context) const override;
 };
 
 class LiteralExpression : public Expression {
@@ -78,7 +81,7 @@ private:
     std::int64_t value;
 public:
     LiteralExpression(Location location, std::int64_t value);
-    virtual std::int64_t evaluate(Context& context) override;
+    virtual Result<std::int64_t> evaluate(const Context& context) const override;
 };
 
 #endif

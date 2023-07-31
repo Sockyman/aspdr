@@ -1,5 +1,5 @@
-#include <string>
 #include "Driver.hpp"
+#include <string>
 
 
 std::string fileName{"stdin"};

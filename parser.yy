@@ -17,7 +17,10 @@
     #include <memory>
     #include <tuple>
     #include <vector>
+    #include <cstdio>
     class Driver;
+
+    extern std::FILE* yyin;
 }
 
 %param { Driver& driver }
@@ -193,6 +196,7 @@ expression
 %%
 
 void yy::parser::error(const location_type& loc, const std::string& message) {
-    std::cerr <<  loc << " \033[31merror:\033[0m " << message << '\n';
+    //std::cerr << loc << " \033[31merror:\033[0m " << message << '\n';
+    std::clog << Error{Error::Level::Fatal, loc, message};
 }
 
