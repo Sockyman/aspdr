@@ -37,13 +37,14 @@ public:
     enum class Level {
         Pass,
         Fatal,
+        Syntax,
     };
 
     Error::Level level;
     std::optional<Location> location;
     std::string message;
 
-    Error(Error::Level level, Location location, std::string message);
+    Error(Error::Level level, std::optional<Location> location, std::string message);
     Error(Error::Level level, std::string message);
 
     void display();
@@ -52,25 +53,6 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& stream, const Error& error);
-
-class ErrorList {
-private:
-public:
-    std::vector<Error> errors;
-
-    ErrorList(Error error);
-    ErrorList();
-    ErrorList(std::vector<Error> errors);
-
-    bool hasErrors() const;
-    bool hasFatalErrors() const;
-    void display(std::ostream& stream) const;
-
-    ErrorList join(const ErrorList& list) const;
-    void insert(const ErrorList& list);
-
-    bool operator==(const ErrorList& list) const;
-};
 
 #endif
 

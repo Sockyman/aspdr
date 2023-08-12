@@ -8,20 +8,21 @@
 #include <fstream>
 #include <iostream>
 #include <cstdio>
+#include <optional>
 
 int main(int argc, char** argv) {
+    Assembler assembler{};
+
     if (argc > 1) {
-        yyin = fopen(argv[1], "r");
+        FILE* file = std::fopen(argv[1], "r");
+        assembler.run(file, argv[1]);
+        std::fclose(file);
     } else {
-        yyin = stdin;
+        assembler.run(stdin, "stdin");
     }
 
-    Driver driver{};
-    int code = driver.parseFile();
+    //assembler.printSymbols(std::clog);
 
-    Assembler assembler{driver.statements};
-    assembler.assemble();
-
-    return code;
+    return 0;
 }
 

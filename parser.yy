@@ -10,6 +10,7 @@
 %code requires {
     #include "Expression.hpp"
     #include "Statement.hpp"
+    #include "InstructionStatement.hpp"
     #include <SpdrFirmware/Register.hpp>
     #include <SpdrFirmware/Mode.hpp>
     #include <string>
@@ -65,19 +66,25 @@
     RIGHT_SHIFT ">>"
     ;
 
-%token IMPORT "import"
-    IMPORT_ONCE "import_once"
-    IMPORT_BIN "import_bin"
+%token
+    INCLUDE "include"
+    INCLUDE_BIN "include_bin"
     ADDRESS "address"
     ALIGN "align"
     RES "res"
     RESW "resw"
     BYTE "byte"
+    BYTES "bytes"
     WORD "word"
+    SECTION "section"
+    DATA "data"
+    DATAW "dataw"
+    ONCE "once"
     ;
 
 %token A C D CD F
 
+%token <UnqualifiedIdentifier> UID "raw_unqualified_id"
 %token <std::string> IDENTIFIER "identifier" STRING "string";
 %token <std::int64_t> INTEGER "integer";
 
@@ -97,13 +104,54 @@ statements
 complete_statement
     : statement {driver.push($1);}
     | ENDLINE
+    | "once" ENDLINE {driver.parsed->once = true;}
+    | error ENDLINE
     ;
 
 %nterm <Statement*> statement;
 statement
-    : instruction ENDLINE {$$ = $1;}
-    | symbol ENDLINE {$$ = $1;}
-    | label {$$ = $1;}
+    : label {$$ = $1;}
+    | statement_endline ENDLINE {$$ = $1;}
+    ;
+
+%nterm <Statement*> statement_endline;
+statement_endline
+    : instruction {$$ = $1;}
+    | symbol {$$ = $1;}
+    | "section" STRING {$$ = new SectionStatement{@$, $2};}
+    | "address" expression {$$ = new AddressStatement{@$, $2};}
+    | "align" expression {$$ = new AlignStatement{@$, $2};}
+    | "res" expression {$$ = new ReserveStatement{@$, $2};}
+    | "data" data_element_list {$$ = new DataStatement(@$, $2, 1);}
+    | "dataw" data_element_list {$$ = new DataStatement(@$, $2, 2);}
+    | "include" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Assembly, $2);}
+    | "include_bin" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Binary, $2);}
+    ;
+
+%nterm <std::vector<DataElement*>> data_element_list;
+data_element_list
+    : data_element {$$ = {$1};}
+    | data_element_list "," data_element {$$ = $1; $$.push_back($3);}
+    ;
+
+%nterm <DataElement*> data_element;
+data_element
+    : STRING {$$ = new StringElement(@$, $1);}
+    | expression {$$ = new ExpressionElement(@$, $1);}
+    | data_size expression {$$ = new ExpressionElement(@$, $2, $1);}
+    ;
+
+%nterm <int> data_size;
+data_size
+    : "byte" {$$ = 1;}
+    | "word" {$$ = 2;}
+    | "bytes" "(" INTEGER ")" {$$ = $3;}
+    ;
+
+%nterm <std::vector<Expression*>> expression_list;
+expression_list
+    : expression {$$ = {$1};}
+    | expression_list "," expression {$$ = $1; $$.push_back($3);}
     ;
 
 %nterm <InstructionStatement*> instruction;
@@ -133,25 +181,20 @@ reg
 
 %nterm <LabelStatement*> label;
 label
-    : ident_tail ":" {$$ = new LabelStatement{@$, $1};}
+    : ident ":" {$$ = new LabelStatement{@$, $1};}
     ;
 
 %nterm <SymbolStatement*> symbol;
 symbol
-    : ident_tail "=" expression {$$ = new SymbolStatement{@$, $1, $3};}
+    : ident "=" expression {$$ = new SymbolStatement{@$, $1, $3};}
     ;
 
-%nterm <Identifier> ident;
+%nterm <UnqualifiedIdentifier> ident;
 ident
-    : "." ident {$$ = Identifier();}
-    | ident_tail {$$ = Identifier();}
+    : UID {$$ = $1;} 
+    | IDENTIFIER {$$ = UnqualifiedIdentifier(0, {$1});}
     ;
 
-%nterm <Identifier> ident_tail;
-ident_tail
-    : IDENTIFIER {$$ = Identifier{$1};}
-    | ident_tail "." IDENTIFIER {$$ = $1; $1.push($3);}
-    ;
 
 %left "||";
 %left "&&";
@@ -190,13 +233,12 @@ expression
     | expression "==" expression {$$ = new BinaryExpression{@$, Binary::Equal, $1, $3};}
     | expression "!=" expression {$$ = new BinaryExpression{@$, Binary::NotEqual, $1, $3};}
     | "(" expression ")" {$$ = $2;}
-    | ident_tail {$$ = new SymbolicExpression{@$, $1};}
+    | ident {$$ = new SymbolicExpression{@$, $1};}
     ;
 
 %%
 
 void yy::parser::error(const location_type& loc, const std::string& message) {
-    //std::cerr << loc << " \033[31merror:\033[0m " << message << '\n';
     std::clog << Error{Error::Level::Fatal, loc, message};
 }
 

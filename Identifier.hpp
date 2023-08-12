@@ -1,11 +1,14 @@
 #ifndef IDENTIFIER_HPP
 #define IDENTIFIER_HPP
 
+#include "Result.hpp"
 #include <string>
 #include <vector>
 #include <compare>
 #include <iostream>
 #include <cstdint>
+
+class Context;
 
 class Identifier {
 public:
@@ -27,11 +30,22 @@ public:
     Identifier identifier;
     std::size_t depth;
 
+    static UnqualifiedIdentifier fromString(const std::string& str);
+
     UnqualifiedIdentifier();
     UnqualifiedIdentifier(std::size_t depth, Identifier identifier);
 
-    Identifier qualify(const Identifier& id);
+
+    Result<Identifier> qualify(
+        Context& context,
+        const Location& location,
+        const Identifier& id
+    ) const;
+
+    void incrementDepth();
 };
+
+std::ostream& operator<<(std::ostream& stream, const UnqualifiedIdentifier& id);
 
 #endif
 

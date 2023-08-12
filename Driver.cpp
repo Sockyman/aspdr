@@ -2,9 +2,10 @@
 #include <string>
 
 
-std::string fileName{"stdin"};
-
-Driver::Driver() : location{&fileName}, reachedEof{false}, statements{} {
+Driver::Driver(
+    const std::string& fileName
+) : location{&fileName}, reachedEof{false} {
+    parsed = new ParsedFile{};
 }
 
 int Driver::parseFile() {
@@ -13,6 +14,6 @@ int Driver::parseFile() {
 }
 
 void Driver::push(Statement* statement) {
-    statements.push_back(statement);
+    parsed->statements.push_back(statement);
 }
 

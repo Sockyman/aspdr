@@ -1,4 +1,5 @@
 build/
+programs/
 scanner.cpp
 parser.cpp
 parser.hpp

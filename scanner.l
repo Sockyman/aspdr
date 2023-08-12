@@ -6,6 +6,7 @@
 #include <string>
 #include "Driver.hpp"
 #include "parser.hpp"
+#include "stringliteral.hpp"
 
 #define YY_USER_ACTION {loc.columns(yyleng);}
 
@@ -19,15 +20,19 @@
     loc.step();
 %}
 
-"import" { return yy::parser::make_IMPORT(loc); }
-"import_once" { return yy::parser::make_IMPORT_ONCE(loc); }
-"import_bin" { return yy::parser::make_IMPORT_BIN(loc); }
+"include" { return yy::parser::make_INCLUDE(loc); }
+"include_bin" { return yy::parser::make_INCLUDE_BIN(loc); }
 "address" { return yy::parser::make_ADDRESS(loc); }
 "align" { return yy::parser::make_ALIGN(loc); }
 "res" { return yy::parser::make_RES(loc); }
 "resw" { return yy::parser::make_RESW(loc); }
 "byte" { return yy::parser::make_BYTE(loc); }
+"bytes" { return yy::parser::make_BYTES(loc); }
 "word" { return yy::parser::make_WORD(loc); }
+"section" { return yy::parser::make_SECTION(loc); }
+"data" { return yy::parser::make_DATA(loc); }
+"dataw" { return yy::parser::make_DATAW(loc); }
+"once" { return yy::parser::make_ONCE(loc); }
 
 "a" { return yy::parser::make_A(loc); }
 "c" { return yy::parser::make_C(loc); }
@@ -35,9 +40,22 @@
 "cd" { return yy::parser::make_CD(loc); }
 "f" { return yy::parser::make_F(loc); }
 
+(\.+)([a-zA-Z_][a-zA-Z0-9_]*\.)*([a-zA-Z_][a-zA-Z0-9_]*) {
+    return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext), loc);
+}
+
+([a-zA-Z_][a-zA-Z0-9_]*\.)+([a-zA-Z_][a-zA-Z0-9_]*) {
+    return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext), loc);
+}
+
 [a-zA-Z_][a-zA-Z_0-9]*  { return yy::parser::make_IDENTIFIER(yytext, loc); }
-[0-9]+                  { return yy::parser::make_INTEGER(std::stoi(yytext), loc); }
-0[xX][0-9a-fA-F]+       { return yy::parser::make_INTEGER(std::stoi(yytext), loc); }
+[0-9]+                  { return yy::parser::make_INTEGER(std::stoi(yytext, nullptr, 10), loc); }
+0[xX][0-9a-fA-F]+       { return yy::parser::make_INTEGER(std::stoi(yytext, nullptr, 16), loc); }
+0[bB][01]+  {
+    std::string text = yytext;
+    std::string sub = text.substr(2, text.length() - 2);
+    return yy::parser::make_INTEGER(std::stoi(sub, nullptr, 2), loc);
+}
 
 
 \n  {
@@ -57,6 +75,15 @@
     }
 }
 
+\"([^"]|\\\")*\" {
+    std::string text = yytext;
+    return yy::parser::make_STRING(text.substr(1, text.length() - 2), loc);
+}
+
+'([^']|\\')+' {
+    std::string text = yytext;
+    return yy::parser::make_INTEGER(processEscapedChar(text.substr(1, text.length() - 2)), loc);
+}
 
 [ \t\r] { loc.step(); }
 

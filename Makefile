@@ -4,7 +4,8 @@ BUILD_DIR := build
 
 SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
 	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp Location.cpp \
-	Section.cpp
+	Section.cpp SectionInfo.cpp InstructionStatement.cpp stringliteral.cpp \
+	Context.cpp ErrorHandler.cpp DataElement.cpp
 
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
@@ -20,6 +21,9 @@ scanner.cpp: scanner.l
 
 parser.cpp: parser.yy
 	bison -o parser.cpp --header=parser.hpp parser.yy
+
+parser.hpp: parser.yy
+location.hh: parser.yy
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)

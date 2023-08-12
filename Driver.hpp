@@ -10,15 +10,21 @@
     yy::parser::symbol_type yylex(Driver& driver)
 YY_DECL;
 
+class ParsedFile {
+public:
+    bool once{false};
+    std::vector<Statement*> statements{};
+};
+
 class Driver {
 public:
-    Driver();
-    int parseFile();
-    void push(Statement* statement);
-
     yy::location location;
     bool reachedEof;
-    std::vector<Statement*> statements;
+    ParsedFile* parsed;
+
+    Driver(const std::string& fileName);
+    int parseFile();
+    void push(Statement* statement);
 };
 
 #endif

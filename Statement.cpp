@@ -1,103 +1,120 @@
 #include "Statement.hpp"
 #include "Assembler.hpp"
 #include "Error.hpp"
+#include "Context.hpp"
 #include <stdexcept>
+#include <filesystem>
 
 Statement::Statement() : location{} {}
 
 Statement::Statement(Location location) : location{location} {}
 
-InstructionStatement::InstructionStatement() : expressions{} {}
-
-InstructionStatement::InstructionStatement(
-    Location location,
-    Instruction instruction
-) : InstructionStatement{location, instruction, nullptr} {}
-
-InstructionStatement::InstructionStatement(
-    Location location,
-    Instruction instruction,
-    Expression* expr
-) : InstructionStatement{location, instruction, expr, nullptr} {}
-
-InstructionStatement::InstructionStatement(
-    Location location,
-    Instruction instruction,
-    Expression* expr0,
-    Expression* expr1
-) : Statement{location}, instruction{instruction}, expressions{expr0, expr1} {}
-
-VoidResult InstructionStatement::assembleAddress(
-    Context& context,
-    const Address& address,
-    const Expression* expr
-) {
-    const ModeData& data = ModeData::get(address.mode);
-    if (!data.dataSize) {
-        return VoidResult{};
-    }
-
-    return context.section.writeInteger(context, expr, data.dataSize);
-}
-
-VoidResult InstructionStatement::assemble(Context& context) {
-    if (!context
-        .assembler->instructionSet.instructionReferences
-        .count(this->instruction)
-    ) {
-        std::stringstream ss{};
-        ss << "instruction \'" << this->instruction << "\' does not exist.";
-        return VoidResult{{Error::Level::Fatal, this->location, ss.str()}};
-    }
-
-    std::uint8_t opcode = context.assembler->instructionSet
-        .instructionReferences.at(this->instruction);
-
-    return context.section.writeByte(this->location, opcode)
-        .then(this->assembleAddress(
-            context,
-            this->instruction.mode.source,
-            this->expressions[1]))
-        .then(this->assembleAddress(
-            context,
-            this->instruction.mode.destination,
-            this->expressions[0]));
-}
-
 
 LabelStatement::LabelStatement() {}
 
-LabelStatement::LabelStatement(Location location, Identifier id)
+LabelStatement::LabelStatement(Location location, UnqualifiedIdentifier id)
 : Statement{location}, id{id} {}
 
 VoidResult LabelStatement::assemble(Context& context) {
-    auto address = context.section.getAddress();
+    auto address = context.getSection().getAddress();
     if (!address) {
-        return {{Error::Level::Pass, this->location, "cannot get address"}};
+        return context.voidError({
+            Error::Level::Pass,
+            this->location,
+            "cannot get address"
+        });
     }
 
+    auto qualifiedId = context.qualify(this->location, this->id);
+
+    if (qualifiedId.isErr()) {
+        return qualifiedId.intoVoid();
+    }
+
+    context.setScope(qualifiedId.getOk());
+
     return context.assembler->assignSymbol(
+        context,
         this->location,
-        this->id,
+        qualifiedId,
         *address
     );
 }
-
 
 SymbolStatement::SymbolStatement() {}
 
 SymbolStatement::SymbolStatement(
     Location location,
-    Identifier id,
+    UnqualifiedIdentifier id,
     Expression* expr
 ) : Statement{location}, id{id}, expr{expr} {}
 
 VoidResult SymbolStatement::assemble(Context& context) {
     Result<std::int64_t> result = this->expr->evaluate(context);
     if (result.isErr()) {
-        return result.into<VoidResult>();
+        return result.intoVoid();
     }
 
-    return context.assembler->assignSymbol(this->location, this->id, result.getOk());
+    auto qualifiedId = context.qualify(this->location, this->id);
+
+    return context.assembler->assignSymbol(
+        context, this->location, qualifiedId, result.getOk()
+    );
+}
+
+
+SectionStatement::SectionStatement() {}
+SectionStatement::SectionStatement(Location location, std::string sectionId)
+: Statement{location}, sectionId{sectionId} {}
+
+VoidResult SectionStatement::assemble(Context& context) {
+    return context.changeSection(this->location, this->sectionId);
+}
+
+AddressStatement::AddressStatement() {}
+AddressStatement::AddressStatement(Location location, Expression* expr)
+    : Statement{location}, expr{expr} {}
+VoidResult AddressStatement::assemble(Context& context) {
+    return context.getSection().changeAddress(context, this->expr);
+}
+
+AlignStatement::AlignStatement() {}
+AlignStatement::AlignStatement(Location location, Expression* expr)
+    : Statement{location}, expr{expr} {}
+
+VoidResult AlignStatement::assemble(Context& context) {
+    return context.getSection().align(context, this->expr);
+}
+
+ReserveStatement::ReserveStatement() {}
+ReserveStatement::ReserveStatement(Location location, Expression* expr)
+: Statement{location}, expr{expr} {}
+
+VoidResult ReserveStatement::assemble(Context& context) {
+    return context.getSection().reserve(context, this->expr);
+}
+
+DataStatement::DataStatement() {}
+DataStatement::DataStatement(Location location, std::vector<DataElement*> elements, int defaultSize)
+: Statement{location}, elements{elements}, defaultSize{defaultSize} {}
+
+VoidResult DataStatement::assemble(Context& context) {
+    auto result = VoidResult{};
+    for (auto& elem : this->elements) {
+        elem->write(context, this->defaultSize);
+    }
+    return result;
+}
+
+
+IncludeStatement::IncludeStatement() {}
+IncludeStatement::IncludeStatement(
+    Location location,
+    IncludeStatement::Type type,
+    std::string fileName
+) : Statement{location}, type{type}, fileName{fileName} {}
+
+VoidResult IncludeStatement::assemble(Context& context) {
+    return context.assembler->assemble(context, this->fileName, this->location);
 }
 
