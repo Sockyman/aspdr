@@ -89,9 +89,21 @@ Result<Identifier> UnqualifiedIdentifier::qualify(
         id.value.begin(),
         id.value.begin() + this->depth
     );
+
+    auto it = this->identifier.value.begin();
+    const std::string& first = this->identifier.value[0];
+
+    if (first == "MACRO") {
+        v.push_back(context.frames.getMacroIdent());
+        ++it;
+    } else if (first == "LOCAL") {
+        v.push_back(context.frames.getLocalIdent());
+        ++it;
+    }
+
     v.insert(
         v.end(),
-        this->identifier.value.begin(),
+        it,
         this->identifier.value.end()
     );
 

@@ -6,13 +6,17 @@
 #include "Section.hpp"
 #include "SectionInfo.hpp"
 #include "Driver.hpp"
+#include "ErrorHandler.hpp"
+#include "Macro.hpp"
 #include <SpdrFirmware/InstructionSet.hpp>
+#include <SpdrFirmware/MicroSequence.hpp>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
 #include <map>
 #include <string>
 #include <optional>
+#include <tuple>
 
 class Context;
 
@@ -32,13 +36,20 @@ private:
         const std::string& fileName
     );
 
+    Context passes(const std::string& fileName);
+
 public:
+    std::map<std::string, std::vector<char>> binaryFiles;
+
     std::map<std::string, SectionInfo> sections;
     const InstructionSet instructionSet;
 
-    Assembler();
+    std::map<Macro, std::pair<std::vector<Statement*>, int>> macros;
 
-    bool run(FILE* file, const std::string& fileName);
+    Assembler();
+    ~Assembler();
+
+    bool run(const std::string& fileName);
 
     VoidResult assemble(
         Context& context,
@@ -65,7 +76,16 @@ public:
     void createSection(std::string name, bool writable, std::int64_t start);
 
     void printSymbols(std::ostream& stream);
+
+
+    //VoidResult defineMacro(Macro macro, std::vector<Statement*> statements, int uid);
 };
+
+Result<FILE*> openFile(
+    Context& context,
+    const std::string& fileName,
+    const std::optional<Location>& location = {}
+);
 
 #endif
 

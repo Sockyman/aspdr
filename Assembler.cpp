@@ -2,6 +2,7 @@
 #include "Error.hpp"
 #include "Context.hpp"
 #include "Driver.hpp"
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <cstdio>
@@ -9,10 +10,12 @@
 #include <functional>
 #include <filesystem>
 #include <format>
+#include <span>
 
 Assembler::Assembler()
 :   symbols{},
     parsedFiles{},
+    binaryFiles{},
     sections{},
     instructionSet{}
 {
@@ -20,34 +23,58 @@ Assembler::Assembler()
     this->createSection("var", false, 0x8000);
 }
 
+Assembler::~Assembler() {
+    //int i = 0;
+    for (auto& parsed : this->parsedFiles) {
+        //std::cout << parsed.first << '\n';
+        delete parsed.second;
+    }
+}
+
+void hexdump(std::span<char> bytes) {
+    const unsigned long bytesPerLine = 16;
+    for (std::size_t i = 0; i < bytes.size(); i += bytesPerLine) {
+        std::cout << std::format("{:04x}: ", i);
+        for (std::size_t j = 0; j < std::min(bytes.size() - i, bytesPerLine); ++j) {
+            if (j == bytesPerLine / 2) {
+                std::cout << ' ';
+            }
+
+            std::cout << std::format(
+                "{:02x} ",
+                static_cast<std::uint8_t>(bytes[i + j])
+            );
+        }
+        std::cout << '\n';
+    }
+}
+
 /// Assembling
 
-bool Assembler::run(FILE* file, const std::string& fileName) {
+Context Assembler::passes(const std::string& fileName) {
     const int maxPasses = 2;
     std::vector<Error> previousErrors{};
 
-    Context context{this};
+    int pass = 0;
+    for (;;) {
+        Context context = Context{this};
 
-    auto parsed = this->parseFile(file, fileName);
-    if (!parsed) {
-        return false;
-    }
-
-    for (int i = 0; i < maxPasses; ++i) {
-        previousErrors = std::move(context.errors);
-        context = Context{this};
-
-        this->assemble(context, (*parsed)->statements);
+        this->assemble(context, fileName, {});
 
         if (!context.hasErrors() 
             || previousErrors == context.getErrors()
             || context.hasErrorLevel(Error::Level::Syntax)
+            || pass++ == maxPasses
         ) {
-            break;
+            return context;
         }
-    }
 
-    delete *parsed;
+        previousErrors = std::move(context.errors);
+    }
+}
+
+bool Assembler::run(const std::string& fileName) {
+    Context context = passes(fileName);
 
     if (context.hasErrors()) {
         context.displayErrors(std::clog);
@@ -55,12 +82,9 @@ bool Assembler::run(FILE* file, const std::string& fileName) {
     }
 
     auto& bytes = context.sections["code"].bytes;
-    //std::cout.write(bytes.data(), bytes.size());
 
-    for (auto b : bytes) {
-        std::cout << std::format("{:02x} ", static_cast<std::uint8_t>(b));
-    }
-    std::cout << '\n';
+    //std::cout.write(bytes.data(), bytes.size());
+    hexdump(bytes);
 
     return true;
 }
@@ -104,23 +128,24 @@ Result<ParsedFile*> Assembler::getParsedFile(
         return this->parsedFiles[fileName];
     }
 
-    if (!std::filesystem::exists(fileName)
-        || std::filesystem::is_directory(fileName)
-    ) {
-        std::stringstream ss{};
-        ss << "no such file '" << fileName << "'";
+    //std::cout << fileName << ": " << std::filesystem::exists(fileName) << '\n';
+
+    auto file = openFile(context, fileName, location);
+
+    if (file.isErr()) {
+        return file.into<ParsedFile*>();
+    }
+
+    auto parsed = this->parseFile(file.getOk(), fileName);
+    if (!parsed) {
         return context.error<ParsedFile*>({
-            Error::Level::Fatal, location, ss.str()
+            Error::Level::Syntax,
+            location,
+            "failed to parse file"
         });
     }
 
-    FILE* file = std::fopen(fileName.c_str(), "r");
-    auto parsed = this->parseFile(file, fileName);
-    if (!parsed) {
-        return context.error<ParsedFile*>({Error::Level::Syntax, location, "failed to parse file"});
-    }
-
-    std::fclose(file);
+    std::fclose(file.getOk());
 
     this->parsedFiles[fileName] = *parsed;
     return this->parsedFiles[fileName];
@@ -164,6 +189,8 @@ VoidResult Assembler::assignSymbol(
         return identifier.intoVoid();
     }
 
+    //std::cout << "id: " << identifier.getOk() << '\n';
+
     auto existing = this->resolveSymbol(identifier.getOk());
     if (existing && *existing != value) {
         std::stringstream ss{};
@@ -191,3 +218,30 @@ void Assembler::createSection(
     sections[name] = SectionInfo{name, writable, start};
 }
 
+
+Result<FILE*> openFile(
+    Context& context,
+    const std::string& fileName,
+    const std::optional<Location>& location
+) {
+    if (fileName == "stdin") {
+        return stdin;
+    }
+
+    if (!std::filesystem::exists(fileName)
+        || std::filesystem::is_directory(fileName)
+    ) {
+        std::stringstream ss{};
+        ss << "no such file '" << fileName << "'";
+        return context.error<FILE*>({
+            Error::Level::Fatal, location, ss.str()
+        });
+    }
+
+    return std::fopen(fileName.c_str(), "r");
+}
+
+//VoidResult Assembler::defineMacro(Macro macro, std::vector<Statement*> statements);
+
+//Result<const MicroSequence*> Assembler::findInstruction(const Instruction& lookup) {
+//}

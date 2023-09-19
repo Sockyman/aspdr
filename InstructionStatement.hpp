@@ -19,7 +19,6 @@ public:
     const Instruction instruction;
     const std::array<Expression*, 2> expressions;
 
-    InstructionStatement();
     InstructionStatement(Location location, Instruction instruction);
 
     InstructionStatement(
@@ -32,6 +31,8 @@ public:
         Instruction instruction,
         Expression* expr0,
         Expression* expr1);
+
+    virtual ~InstructionStatement() override;
 
     virtual VoidResult assemble(Context& context) override;
 };

@@ -3,6 +3,7 @@
 
 #include "Statement.hpp"
 #include "parser.hpp"
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -12,8 +13,11 @@ YY_DECL;
 
 class ParsedFile {
 public:
-    bool once{false};
-    std::vector<Statement*> statements{};
+    bool once;
+    std::vector<Statement*> statements;
+
+    ParsedFile();
+    ~ParsedFile();
 };
 
 class Driver {
@@ -23,6 +27,8 @@ public:
     ParsedFile* parsed;
 
     Driver(const std::string& fileName);
+    ~Driver();
+
     int parseFile();
     void push(Statement* statement);
 };

@@ -80,6 +80,8 @@
     DATA "data"
     DATAW "dataw"
     ONCE "once"
+    MACRO "macro"
+    ENDMACRO "endmacro"
     ;
 
 %token A C D CD F
@@ -97,15 +99,20 @@ target
     ;
 
 statements
-    : statements complete_statement
-    | complete_statement
+    : statements push_statement
+    | push_statement
     ;
 
+push_statement
+    : complete_statement {if ($1) driver.push($1);}
+    ;
+
+%nterm <Statement*> complete_statement;
 complete_statement
-    : statement {driver.push($1);}
-    | ENDLINE
-    | "once" ENDLINE {driver.parsed->once = true;}
-    | error ENDLINE
+    : statement {$$ = $1;}
+    | ENDLINE {$$ = nullptr;}
+    | "once" ENDLINE {driver.parsed->once = true; $$ = nullptr; }
+    | error ENDLINE {$$ = nullptr;}
     ;
 
 %nterm <Statement*> statement;
@@ -126,6 +133,18 @@ statement_endline
     | "dataw" data_element_list {$$ = new DataStatement(@$, $2, 2);}
     | "include" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Assembly, $2);}
     | "include_bin" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Binary, $2);}
+    | macro_statement {$$ = $1;}
+    ;
+
+%nterm <Statement*> macro_statement;
+macro_statement
+    : "macro" IDENTIFIER ENDLINE statement_vec "endmacro" { $$ = new MacroStatement(@$, $2, std::move($4)); }
+    ;
+
+%nterm <std::vector<Statement*>> statement_vec;
+statement_vec
+    : statement_vec complete_statement {if ($2) $1.push_back($2); $$ = std::move($1);}
+    | complete_statement {std::vector<Statement*> v{}; if ($1) v.push_back($1); $$ = v; }
     ;
 
 %nterm <std::vector<DataElement*>> data_element_list;

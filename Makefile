@@ -5,7 +5,7 @@ BUILD_DIR := build
 SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
 	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp Location.cpp \
 	Section.cpp SectionInfo.cpp InstructionStatement.cpp stringliteral.cpp \
-	Context.cpp ErrorHandler.cpp DataElement.cpp
+	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp
 
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)

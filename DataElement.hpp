@@ -17,6 +17,8 @@ public:
     DataElement(Location location);
 
     virtual VoidResult write(Context& context, int defaultSize) = 0;
+
+    virtual ~DataElement();
 };
 
 class ExpressionElement : public DataElement {
@@ -27,6 +29,8 @@ public:
     ExpressionElement(Location location, Expression* expr, std::optional<int> size = {});
 
     virtual VoidResult write(Context& context, int defaultSize) override;
+
+    virtual ~ExpressionElement() override;
 };
 
 class StringElement : public DataElement {

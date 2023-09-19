@@ -5,6 +5,7 @@
 #include "ErrorHandler.hpp"
 #include "Section.hpp"
 #include "Assembler.hpp"
+#include "Frame.hpp"
 #include <map>
 #include <string>
 #include <set>
@@ -19,6 +20,8 @@ public:
     std::map<std::string, Section> sections;
     std::string currentSection;
     std::set<std::string> includedFiles;
+
+    FrameStack frames;
 
     Identifier scope;
 

@@ -5,6 +5,7 @@ Context::Context(Assembler* assembler)
     sections{},
     currentSection{"code"},
     includedFiles{},
+    frames{},
     scope{}
 {
     for (auto& sec : assembler->sections) {

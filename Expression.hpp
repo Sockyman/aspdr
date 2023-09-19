@@ -16,6 +16,8 @@ public:
     Location location;
     Expression(Location location);
     virtual Result<std::int64_t> evaluate(Context& context) const = 0;
+
+    virtual ~Expression();
 };
 
 enum class Binary {
@@ -55,6 +57,8 @@ public:
     BinaryExpression(Location location, Binary operation, 
         Expression* operand0, Expression* operand1);
     virtual Result<std::int64_t> evaluate(Context& context) const override;
+
+    virtual ~BinaryExpression() override;
 };
 
 enum class Unary {
@@ -70,6 +74,8 @@ private:
 public:
     UnaryExpression(Location location, Unary operation, Expression* operand);
     virtual Result<std::int64_t> evaluate(Context& context) const override;
+
+    virtual ~UnaryExpression() override;
 };
 
 class SymbolicExpression : public Expression {

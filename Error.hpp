@@ -24,6 +24,8 @@
         } \
     }
 
+#define UNREACHABLE ASSEMBLER_ERROR("unreachable code reached")
+
 class AssemblerError : public std::exception {
 public:
     AssemblerError(std::string message);

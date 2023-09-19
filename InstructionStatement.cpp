@@ -2,8 +2,6 @@
 #include "Context.hpp"
 #include "Assembler.hpp"
 
-InstructionStatement::InstructionStatement() : expressions{} {}
-
 InstructionStatement::InstructionStatement(
     Location location,
     Instruction instruction
@@ -33,6 +31,12 @@ VoidResult InstructionStatement::assembleAddress(
     }
 
     return context.getSection().writeInteger(context, expr, data.dataSize);
+}
+
+InstructionStatement::~InstructionStatement() {
+    for (auto expr : this->expressions) {
+        delete expr;
+    }
 }
 
 VoidResult InstructionStatement::assembleInstruction(

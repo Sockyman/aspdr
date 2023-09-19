@@ -8,6 +8,8 @@ Driver::Driver(
     parsed = new ParsedFile{};
 }
 
+Driver::~Driver() {}
+
 int Driver::parseFile() {
     yy::parser parser{*this};
     return parser.parse();
@@ -15,5 +17,14 @@ int Driver::parseFile() {
 
 void Driver::push(Statement* statement) {
     parsed->statements.push_back(statement);
+}
+
+ParsedFile::ParsedFile() : once{false}, statements{} {
+}
+
+ParsedFile::~ParsedFile() {
+    for (auto& elem : this->statements) {
+        delete elem;
+    }
 }
 

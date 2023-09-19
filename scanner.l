@@ -33,6 +33,8 @@
 "data" { return yy::parser::make_DATA(loc); }
 "dataw" { return yy::parser::make_DATAW(loc); }
 "once" { return yy::parser::make_ONCE(loc); }
+"macro" { return yy::parser::make_MACRO(loc); }
+"endmacro" { return yy::parser::make_ENDMACRO(loc); }
 
 "a" { return yy::parser::make_A(loc); }
 "c" { return yy::parser::make_C(loc); }

@@ -19,6 +19,8 @@ BinaryExpression::BinaryExpression(
     operand0{operand0},
     operand1{operand1} {}
 
+Expression::~Expression() {}
+
 Result<std::int64_t> BinaryExpression::performOperation(
     Context& context,
     std::int64_t x,
@@ -81,6 +83,12 @@ Result<std::int64_t> BinaryExpression::evaluate(Context& context) const {
     return this->performOperation(context, *r0, *r1);
 }
 
+BinaryExpression::~BinaryExpression() {
+    delete this->operand0;
+    delete this->operand1;
+}
+
+
 UnaryExpression::UnaryExpression(
     Location location,
     Unary operation,
@@ -107,6 +115,11 @@ Result<std::int64_t> UnaryExpression::evaluate(Context& context) const {
     }
     ASSEMBLER_ERROR("unsupported unary operator.");
 }
+
+UnaryExpression::~UnaryExpression() {
+    delete this->operand;
+}
+
 
 SymbolicExpression::SymbolicExpression(Location location, UnqualifiedIdentifier identifier)
     : Expression{location}, identifier{identifier} {}

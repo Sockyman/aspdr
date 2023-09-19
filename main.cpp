@@ -10,19 +10,16 @@
 #include <cstdio>
 #include <optional>
 
+#include "Frame.hpp"
+
 int main(int argc, char** argv) {
     Assembler assembler{};
 
-    if (argc > 1) {
-        FILE* file = std::fopen(argv[1], "r");
-        assembler.run(file, argv[1]);
-        std::fclose(file);
-    } else {
-        assembler.run(stdin, "stdin");
-    }
+    std::string file = argc > 1 ? argv[1] : "stdin";
+    bool success = assembler.run(file);
 
     //assembler.printSymbols(std::clog);
 
-    return 0;
+    return success ? 0 : 1;
 }
 
