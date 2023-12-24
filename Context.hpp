@@ -21,6 +21,8 @@ public:
     std::string currentSection;
     std::set<std::string> includedFiles;
 
+    std::vector<std::string> fileNames;
+
     FrameStack frames;
 
     Identifier scope;
@@ -31,10 +33,12 @@ public:
     virtual const std::vector<Error>& getErrors() const override;
 
     Section& getSection();
+
     VoidResult changeSection(
         const Location& location,
         const std::string& newSection
     );
+
 
     Result<Identifier> qualify(
         const Location& location,

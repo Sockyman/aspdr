@@ -5,8 +5,10 @@ Context::Context(Assembler* assembler)
     sections{},
     currentSection{"code"},
     includedFiles{},
+    fileNames{},
     frames{},
     scope{}
+
 {
     for (auto& sec : assembler->sections) {
         sections[sec.first] = Section{&sec.second};

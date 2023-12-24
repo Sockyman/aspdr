@@ -17,6 +17,7 @@
 #include <string>
 #include <optional>
 #include <tuple>
+#include <filesystem>
 
 class Context;
 
@@ -80,6 +81,12 @@ public:
 
     //VoidResult defineMacro(Macro macro, std::vector<Statement*> statements, int uid);
 };
+
+Result<std::string> getFileName(
+    Context& context,
+    const std::string& filename,
+    const std::optional<Location>& location = {}
+);
 
 Result<FILE*> openFile(
     Context& context,

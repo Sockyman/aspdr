@@ -17,7 +17,9 @@ VoidResult ExpressionElement::write(Context& context, int defaultSize) {
     if (this->size) {
         defaultSize = *this->size;
     }
-    return context.getSection().writeInteger(context, this->expression, defaultSize);
+    return context
+        .getSection()
+        .writeInteger(context, this->expression, defaultSize);
 }
 
 ExpressionElement::~ExpressionElement() {

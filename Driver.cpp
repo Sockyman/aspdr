@@ -1,7 +1,6 @@
 #include "Driver.hpp"
 #include <string>
 
-
 Driver::Driver(
     const std::string& fileName
 ) : location{&fileName}, reachedEof{false} {

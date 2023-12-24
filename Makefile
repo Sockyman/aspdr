@@ -5,7 +5,7 @@ BUILD_DIR := build
 SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
 	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp Location.cpp \
 	Section.cpp SectionInfo.cpp InstructionStatement.cpp stringliteral.cpp \
-	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp
+	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp Options.cpp
 
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
@@ -33,5 +33,10 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 clean:
 	rm -r $(BUILD_DIR)
 	rm scanner.cpp parser.cpp parser.hpp location.hh
+
+.PHONY: install
+install:
+	cp $(BUILD_DIR)/$(TARGET) $(HOME)/.local/bin/$(TARGET)
+
 
 -include $(DEPS)

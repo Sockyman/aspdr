@@ -27,10 +27,18 @@ bool Error::operator==(const Error& other) const {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Error& error) {
-    if (error.location) {
-        stream << *error.location << ": ";
-    }
-    stream << "\033[31merror:\033[0m " << error.message << '\n';
+    printError(stream, error.message, error.location);
     return stream;
+}
+
+void printError(
+    std::ostream& stream,
+    const std::string& message,
+    const std::optional<Location>& location
+) {
+    if (location) {
+        stream << *location << ": ";
+    }
+    stream << "\033[31merror:\033[0m " << message << '\n';
 }
 

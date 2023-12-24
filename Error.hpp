@@ -56,5 +56,10 @@ public:
 
 std::ostream& operator<<(std::ostream& stream, const Error& error);
 
+void printError(
+    std::ostream& stream,
+    const std::string& message,
+    const std::optional<Location>& location = {});
+
 #endif
 

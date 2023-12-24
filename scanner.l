@@ -35,6 +35,7 @@
 "once" { return yy::parser::make_ONCE(loc); }
 "macro" { return yy::parser::make_MACRO(loc); }
 "endmacro" { return yy::parser::make_ENDMACRO(loc); }
+"variable" { return yy::parser::make_VARIABLE(loc); }
 
 "a" { return yy::parser::make_A(loc); }
 "c" { return yy::parser::make_C(loc); }
@@ -51,12 +52,12 @@
 }
 
 [a-zA-Z_][a-zA-Z_0-9]*  { return yy::parser::make_IDENTIFIER(yytext, loc); }
-[0-9]+                  { return yy::parser::make_INTEGER(std::stoi(yytext, nullptr, 10), loc); }
-0[xX][0-9a-fA-F]+       { return yy::parser::make_INTEGER(std::stoi(yytext, nullptr, 16), loc); }
+[0-9]+                  { return yy::parser::make_INTEGER(std::stol(yytext, nullptr, 10), loc); }
+0[xX][0-9a-fA-F]+       { return yy::parser::make_INTEGER(std::stol(yytext, nullptr, 16), loc); }
 0[bB][01]+  {
     std::string text = yytext;
     std::string sub = text.substr(2, text.length() - 2);
-    return yy::parser::make_INTEGER(std::stoi(sub, nullptr, 2), loc);
+    return yy::parser::make_INTEGER(std::stol(sub, nullptr, 2), loc);
 }
 
 

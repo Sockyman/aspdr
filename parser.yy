@@ -82,6 +82,7 @@
     ONCE "once"
     MACRO "macro"
     ENDMACRO "endmacro"
+    VARIABLE "variable"
     ;
 
 %token A C D CD F
@@ -134,6 +135,7 @@ statement_endline
     | "include" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Assembly, $2);}
     | "include_bin" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Binary, $2);}
     | macro_statement {$$ = $1;}
+    | VARIABLE ident expression {$$ = new VariableStatement(@$, $2, $3);}
     ;
 
 %nterm <Statement*> macro_statement;
@@ -176,7 +178,7 @@ expression_list
 %nterm <InstructionStatement*> instruction;
 instruction
     : IDENTIFIER {$$ = new InstructionStatement{@$, {$1, {Mode::Implied}}};}
-    | IDENTIFIER mode {$$ = new InstructionStatement{@$, {$1, $2.first}, $2.second};}
+    | IDENTIFIER mode {$$ = new InstructionStatement{@$, {$1, {$2.first}}, $2.second};}
     | IDENTIFIER mode "," mode {$$ = new InstructionStatement{@$, {$1, {$2.first, $4.first}}, $2.second, $4.second};}
     ;
 

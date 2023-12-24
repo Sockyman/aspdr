@@ -18,17 +18,21 @@ Statement::~Statement() {}
 LabelStatement::LabelStatement(Location location, UnqualifiedIdentifier id)
 : Statement{location}, id{id} {}
 
-VoidResult LabelStatement::assemble(Context& context) {
+VoidResult assembleLabel(
+    Context& context,
+    const Location& location,
+    const UnqualifiedIdentifier& id
+) {
     auto address = context.getSection().getAddress();
     if (!address) {
         return context.voidError({
             Error::Level::Pass,
-            this->location,
+            location,
             "cannot get address"
         });
     }
 
-    auto qualifiedId = context.qualify(this->location, this->id);
+    auto qualifiedId = context.qualify(location, id);
 
     if (qualifiedId.isErr()) {
         return qualifiedId.intoVoid();
@@ -38,10 +42,14 @@ VoidResult LabelStatement::assemble(Context& context) {
 
     return context.assembler->assignSymbol(
         context,
-        this->location,
+        location,
         qualifiedId,
         *address
     );
+}
+
+VoidResult LabelStatement::assemble(Context& context) {
+    return assembleLabel(context, this->location, this->id);
 }
 
 
@@ -112,8 +120,11 @@ ReserveStatement::~ReserveStatement() {
 }
 
 
-DataStatement::DataStatement(Location location, std::vector<DataElement*> elements, int defaultSize)
-: Statement{location}, elements{elements}, defaultSize{defaultSize} {}
+DataStatement::DataStatement(
+    Location location,
+    std::vector<DataElement*> elements,
+    int defaultSize
+) : Statement{location}, elements{elements}, defaultSize{defaultSize} {}
 
 VoidResult DataStatement::assemble(Context& context) {
     auto result = VoidResult{};
@@ -138,7 +149,11 @@ IncludeStatement::IncludeStatement(
 
 VoidResult IncludeStatement::assemble(Context& context) {
     if (type == IncludeStatement::Type::Assembly) {
-        return context.assembler->assemble(context, this->fileName, this->location);
+        return context.assembler->assemble(
+            context,
+            this->fileName,
+            this->location
+        );
     }
 
     /*if (context.assembler->binaryFiles.contains(this->fileName)) {
@@ -158,8 +173,11 @@ VoidResult IncludeStatement::assemble(Context& context) {
 }
 
 
-MacroStatement::MacroStatement(Location location, std::string name, std::vector<Statement*> statements)
-    : name{name}, statements{statements} {}
+MacroStatement::MacroStatement(
+    Location location,
+    std::string name,
+    std::vector<Statement*> statements
+): Statement{location}, name{name}, statements{statements} {}
 
 MacroStatement::~MacroStatement() {
     for (auto& statement : this->statements) {
@@ -175,6 +193,24 @@ VoidResult MacroStatement::assemble(Context& context) {
     context.frames.pop();
 
 
-    return {};
+    return VoidResult{};
+}
+
+VariableStatement::VariableStatement(
+    Location location,
+    UnqualifiedIdentifier id,
+    Expression* expr
+): Statement{location}, id{id}, expr{expr} {}
+
+VariableStatement::~VariableStatement() {
+    delete this->expr;
+}
+
+VoidResult VariableStatement::assemble(Context& context) {
+    auto s = context.currentSection;
+    context.changeSection(this->location, "var");
+    assembleLabel(context, this->location, this->id);
+    context.getSection().reserve(context, this->expr);
+    return context.changeSection(this->location, s);
 }
 

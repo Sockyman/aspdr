@@ -132,5 +132,16 @@ public:
     virtual VoidResult assemble(Context& context) override;
 };
 
+class VariableStatement : public Statement {
+public:
+    UnqualifiedIdentifier id;
+    Expression* expr;
+
+    VariableStatement(Location, UnqualifiedIdentifier id, Expression* expr);
+    virtual ~VariableStatement() override;
+
+    virtual VoidResult assemble(Context& context) override;
+};
+
 #endif
 

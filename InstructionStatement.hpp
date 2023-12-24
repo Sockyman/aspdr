@@ -7,8 +7,9 @@ class InstructionStatement : public Statement {
 private:
     VoidResult assembleAddress(
         Context& context,
-        const Address& address,
-        const Expression* expr);
+        Size size,
+        const Expression* expr
+    );
 
     VoidResult assembleInstruction(
         Context& context,

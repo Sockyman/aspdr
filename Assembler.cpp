@@ -19,7 +19,7 @@ Assembler::Assembler()
     sections{},
     instructionSet{}
 {
-    this->createSection("code", true, 0);
+    this->createSection("code", true, 0x0000);
     this->createSection("var", false, 0x8000);
 }
 
@@ -35,7 +35,12 @@ void hexdump(std::span<char> bytes) {
     const unsigned long bytesPerLine = 16;
     for (std::size_t i = 0; i < bytes.size(); i += bytesPerLine) {
         std::cout << std::format("{:04x}: ", i);
-        for (std::size_t j = 0; j < std::min(bytes.size() - i, bytesPerLine); ++j) {
+
+        for (
+            std::size_t j = 0;
+            j < std::min(bytes.size() - i, bytesPerLine);
+            ++j
+        ) {
             if (j == bytesPerLine / 2) {
                 std::cout << ' ';
             }
@@ -81,10 +86,16 @@ bool Assembler::run(const std::string& fileName) {
         return false;
     }
 
+    for (const auto& symbol : this->symbols) {
+        std::cerr
+            << symbol.first
+            << std::format(" = {:#04x} ; {}\n", symbol.second, symbol.second);
+    }
+
     auto& bytes = context.sections["code"].bytes;
 
-    //std::cout.write(bytes.data(), bytes.size());
-    hexdump(bytes);
+    std::cout.write(bytes.data(), bytes.size());
+    //hexdump(bytes);
 
     return true;
 }
@@ -218,6 +229,39 @@ void Assembler::createSection(
     sections[name] = SectionInfo{name, writable, start};
 }
 
+bool fileExists(const std::filesystem::path& fileName) {
+    //std::cout << fileName << "\n";
+    if (!std::filesystem::exists(fileName)
+        || std::filesystem::is_directory(fileName)
+    ) {
+        return false;
+    }
+    return true;
+}
+
+Result<std::string> getFileName(
+    Context& context,
+    const std::string& fileName,
+    const std::optional<Location>& location
+) {
+    if (fileExists(fileName)) {
+        return {fileName};
+    } 
+
+    auto stdPath = std::filesystem::path{
+        "/home/sockyman/src/spdr-software/asm-new/"
+    } / fileName;
+
+    if (fileExists(stdPath)) {
+        return stdPath.string();
+    }
+
+    std::stringstream ss{};
+    ss << "no such file '" << fileName << "'";
+    return context.error<std::string>({
+        Error::Level::Fatal, location, ss.str()
+    });
+}
 
 Result<FILE*> openFile(
     Context& context,
@@ -228,17 +272,14 @@ Result<FILE*> openFile(
         return stdin;
     }
 
-    if (!std::filesystem::exists(fileName)
-        || std::filesystem::is_directory(fileName)
-    ) {
-        std::stringstream ss{};
-        ss << "no such file '" << fileName << "'";
-        return context.error<FILE*>({
-            Error::Level::Fatal, location, ss.str()
-        });
+    auto resolvedPath = getFileName(context, fileName, location);
+    if (resolvedPath.isErr()) {
+        return resolvedPath.into<FILE*>();
     }
 
-    return std::fopen(fileName.c_str(), "r");
+    FILE* file = std::fopen(resolvedPath.getOk().c_str(), "r");
+    ASSEMBLER_ASSERT(file, "failed to open file");
+    return file;
 }
 
 //VoidResult Assembler::defineMacro(Macro macro, std::vector<Statement*> statements);
