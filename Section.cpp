@@ -3,6 +3,7 @@
 #include "Context.hpp"
 #include <stdexcept>
 #include <sstream>
+#include <format>
 
 Section::Section() {}
 
@@ -181,8 +182,17 @@ VoidResult Section::changeAddress(
     }
 
     if (*this->getAddress() > address.getOk()) {
-        return context.voidError({Error::Level::Fatal, location,
-            "new address before previous address"}); // TODO: Location
+        auto message = std::format(
+            "new address '0x{:04x}' before previous address '0x{:04x}'",
+            address.getOk(),
+            *this->getAddress()
+        );
+
+        return context.voidError({
+            Error::Level::Fatal,
+            location,
+            message
+        });
     }
     return this->reserve(
         context,

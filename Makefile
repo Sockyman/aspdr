@@ -5,13 +5,17 @@ BUILD_DIR := build
 SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
 	Statement.cpp Assembler.cpp Identifier.cpp Error.cpp Location.cpp \
 	Section.cpp SectionInfo.cpp InstructionStatement.cpp stringliteral.cpp \
-	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp Options.cpp
+	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp \
+	ArgumentParser.cpp
 
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
 
-CXXFLAGS := -std=c++20 -g -c -MD -MP -Wall -pedantic -O0
+DATETIME := -D 'DATETIME="$(shell date "+%Y/%m/%d %H:%M:%S")"'
+
+CXXFLAGS := -std=c++20 -g -c -MMD -MP -Wall -pedantic -O0
 LDFLAGS := -lspdr-firmware
+CPPFLAGS := $(DATETIME)
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@

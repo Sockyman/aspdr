@@ -47,6 +47,21 @@ std::string FrameStack::getMacroIdent() {
     });
 }
 
+std::string FrameStack::getIdent(
+    std::function<bool(const Frame::TypeInfo&)> func
+) {
+    std::stringstream ss{};
+
+    ss << "_";
+    for (auto& frame : this->frames) {
+        const Frame::TypeInfo& info = Frame::typeInfo(frame.type);
+        if (func(info) && info.prefix) {
+            ss << '_' << *info.prefix << frame.uniqueIndex;
+        }
+    }
+    return ss.str();
+}
+
 bool FrameStack::stateMutation() {
     for (const auto& frame : this->frames) {
         if (!Frame::typeInfo(frame.type).allowState) {

@@ -3,7 +3,7 @@
 #include "Result.hpp"
 #include "Error.hpp"
 #include "parser.hpp"
-#include "Options.hpp"
+#include "ArgumentParser.hpp"
 #include <SpdrFirmware/Instruction.hpp>
 #include <SpdrFirmware/Mode.hpp>
 #include <fstream>
@@ -13,33 +13,56 @@
 #include <format>
 #include <functional>
 
-struct Foo {
-    std::function<bool(int)> f;
-};
-
 int main(int argc, char** argv) {
-    std::string outfile;
-    std::string infile;
-    bool help = false;
-    bool version = false;
+    enum class Action {
+        assemble,
+        help,
+        version,
+    };
+
+    Action action = Action::assemble;
+
+    std::string outfile{};
+    const char* infile = "stdin"; 
+    bool printSymbols = false;
+    std::vector<std::string_view> includePath{};
+    SectionMode sectionMode = SectionMode::ROM;
 
     ArgumentParser argumentParser{argc, argv, std::clog};
-    argumentParser
-        .addOptValue<StringArgument>('o', "outfile", &outfile)
-        .addOptAssign('h', "help", &help, true)
-        .addOptAssign('v', "version", &version, true)
-        .setDefaultArgValue<StringArgument>(&infile)
-        .parse();
+    if (!argumentParser
+        .addOpt('o', "outfile", argumentString(&outfile))
+        .addOpt('s', "symbols", argumentAssign(&printSymbols, true))
+        .addOpt('i', "include", argumentAppendString(&includePath))
+        .addOpt('r', "ram", argumentAssign(&sectionMode, SectionMode::RAM))
+        .addOpt({}, "rom", argumentAssign(&sectionMode, SectionMode::ROM))
+        .addOpt('h', "help", argumentAssign(&action, Action::help))
+        .addOpt('v', "version", argumentAssign(&action, Action::version))
+        .setDefaultArg(argumentString(&infile))
+        .parse()
+    ) {
+        return 2;
+    }
 
-    std::cout << std::format("'{}' -> '{}' h: {} v: {}\n", infile, outfile, help, version);
-    return 0;
+    bool success = true;
 
-    Assembler assembler{};
+    switch (action) {
+        case Action::assemble:
+        {
+            Assembler assembler{sectionMode, includePath};
 
-    std::string file = argc > 1 ? argv[1] : "stdin";
-    bool success = assembler.run(file);
-
-    //assembler.printSymbols(std::clog);
+            success = assembler.run(infile);
+            if (printSymbols) {
+                assembler.printSymbols(std::clog);
+            }
+        }
+            break;
+        case Action::help:
+            argumentParser.printHelp(std::clog);
+            break;
+        case Action::version:
+            argumentParser.printVersion(std::clog, DATETIME);
+            break;
+    }
 
     return success ? 0 : 1;
 }

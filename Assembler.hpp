@@ -18,6 +18,13 @@
 #include <optional>
 #include <tuple>
 #include <filesystem>
+#include <span>
+#include <string_view>
+
+enum class SectionMode {
+    ROM,
+    RAM,
+};
 
 class Context;
 
@@ -25,6 +32,7 @@ class Assembler {
 private:
     std::map<Identifier, std::int64_t> symbols;
     std::map<std::string, ParsedFile*> parsedFiles;
+    const std::span<std::string_view> includePath;
 
     Result<ParsedFile*> getParsedFile(
         Context& context,
@@ -47,7 +55,7 @@ public:
 
     std::map<Macro, std::pair<std::vector<Statement*>, int>> macros;
 
-    Assembler();
+    Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath);
     ~Assembler();
 
     bool run(const std::string& fileName);
@@ -74,10 +82,9 @@ public:
         std::int64_t value
     );
 
-    void createSection(std::string name, bool writable, std::int64_t start);
+    void createSection(std::string name, bool writable, std::int64_t start, std::int64_t);
 
     void printSymbols(std::ostream& stream);
-
 
     //VoidResult defineMacro(Macro macro, std::vector<Statement*> statements, int uid);
 };
@@ -85,12 +92,14 @@ public:
 Result<std::string> getFileName(
     Context& context,
     const std::string& filename,
+    const std::span<std::string_view> includePath,
     const std::optional<Location>& location = {}
 );
 
 Result<FILE*> openFile(
     Context& context,
     const std::string& fileName,
+    const std::span<std::string_view> includePath,
     const std::optional<Location>& location = {}
 );
 

@@ -12,15 +12,36 @@
 #include <format>
 #include <span>
 
-Assembler::Assembler()
+Assembler::Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath)
 :   symbols{},
     parsedFiles{},
+    includePath{includePath},
     binaryFiles{},
     sections{},
     instructionSet{}
 {
-    this->createSection("code", true, 0x0000);
-    this->createSection("var", false, 0x8000);
+    std::int64_t codeStart;
+    std::int64_t codeEnd;
+    std::int64_t varStart;
+    std::int64_t varEnd;
+
+    switch (sectionMode) {
+        case SectionMode::ROM:
+            codeStart = 0x0000;
+            codeEnd = 0x8000;
+            varStart = 0x8000;
+            varEnd = 0xff00;
+            break;
+        case SectionMode::RAM:
+            codeStart = 0x9000;
+            codeEnd = 0xc000;
+            varStart = 0xc000;
+            varEnd = 0xff00;
+            break;
+    }
+
+    this->createSection("code", true, codeStart, codeEnd);
+    this->createSection("var", false, varStart, varEnd);
 }
 
 Assembler::~Assembler() {
@@ -86,12 +107,6 @@ bool Assembler::run(const std::string& fileName) {
         return false;
     }
 
-    for (const auto& symbol : this->symbols) {
-        std::cerr
-            << symbol.first
-            << std::format(" = {:#04x} ; {}\n", symbol.second, symbol.second);
-    }
-
     auto& bytes = context.sections["code"].bytes;
 
     std::cout.write(bytes.data(), bytes.size());
@@ -128,6 +143,7 @@ VoidResult Assembler::assemble(
     return VoidResult{};
 }
 
+
 /// Parsing
 
 Result<ParsedFile*> Assembler::getParsedFile(
@@ -141,7 +157,7 @@ Result<ParsedFile*> Assembler::getParsedFile(
 
     //std::cout << fileName << ": " << std::filesystem::exists(fileName) << '\n';
 
-    auto file = openFile(context, fileName, location);
+    auto file = openFile(context, fileName, this->includePath, location);
 
     if (file.isErr()) {
         return file.into<ParsedFile*>();
@@ -215,7 +231,9 @@ VoidResult Assembler::assignSymbol(
 
 void Assembler::printSymbols(std::ostream& stream) {
     for (auto& symbol : this->symbols) {
-        stream << symbol.first << std::format(" = 0x{:02x}\n", symbol.second);
+        stream
+            << symbol.first
+            << std::format(" = {:#04x} ; {}\n", symbol.second, symbol.second);
     }
 }
 
@@ -224,9 +242,10 @@ void Assembler::printSymbols(std::ostream& stream) {
 void Assembler::createSection(
     std::string name,
     bool writable,
-    std::int64_t start
+    std::int64_t start,
+    std::int64_t end
 ) {
-    sections[name] = SectionInfo{name, writable, start};
+    sections[name] = SectionInfo{name, writable, start, end};
 }
 
 bool fileExists(const std::filesystem::path& fileName) {
@@ -242,19 +261,23 @@ bool fileExists(const std::filesystem::path& fileName) {
 Result<std::string> getFileName(
     Context& context,
     const std::string& fileName,
+    const std::span<std::string_view> includePath,
     const std::optional<Location>& location
 ) {
     if (fileExists(fileName)) {
         return {fileName};
     } 
 
-    auto stdPath = std::filesystem::path{
-        "/home/sockyman/src/spdr-software/asm-new/"
-    } / fileName;
+    for (auto prefix : includePath) {
+        auto stdPath = std::filesystem::path{
+            prefix
+        } / fileName;
 
-    if (fileExists(stdPath)) {
-        return stdPath.string();
+        if (fileExists(stdPath)) {
+            return stdPath.string();
+        }
     }
+
 
     std::stringstream ss{};
     ss << "no such file '" << fileName << "'";
@@ -266,13 +289,14 @@ Result<std::string> getFileName(
 Result<FILE*> openFile(
     Context& context,
     const std::string& fileName,
+    const std::span<std::string_view> includePath,
     const std::optional<Location>& location
 ) {
     if (fileName == "stdin") {
         return stdin;
     }
 
-    auto resolvedPath = getFileName(context, fileName, location);
+    auto resolvedPath = getFileName(context, fileName, includePath, location);
     if (resolvedPath.isErr()) {
         return resolvedPath.into<FILE*>();
     }

@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <optional>
+#include <functional>
 
 class Frame {
 public:
@@ -15,7 +17,7 @@ public:
 
     class TypeInfo {
     public:
-        std::string prefix;
+        std::optional<std::string> prefix;
         bool macro;
         bool allowState;
 
@@ -34,8 +36,7 @@ class FrameStack {
 private:
     std::vector<Frame> frames;
 
-    template<typename F>
-    std::string getIdent(F func);
+    std::string getIdent(std::function<bool(const Frame::TypeInfo&)> func);
 public:
     FrameStack();
 
@@ -47,20 +48,6 @@ public:
 
     bool stateMutation();
 };
-
-template<typename F>
-std::string FrameStack::getIdent(F func) {
-    std::stringstream ss{};
-
-    ss << "_";
-    for (auto& frame : this->frames) {
-        const Frame::TypeInfo& info = Frame::typeInfo(frame.type);
-        if (func(info)) {
-            ss << '_' << info.prefix << frame.uniqueIndex;
-        }
-    }
-    return ss.str();
-}
 
 #endif
 
