@@ -18,27 +18,28 @@ Statement::~Statement() {}
 LabelStatement::LabelStatement(Location location, UnqualifiedIdentifier id)
 : Statement{location}, id{id} {}
 
-VoidResult assembleLabel(
+bool assembleLabel(
     Context& context,
     const Location& location,
     const UnqualifiedIdentifier& id
 ) {
     auto address = context.getSection().getAddress();
     if (!address) {
-        return context.voidError({
+        context.error({
             Error::Level::Pass,
             location,
             "cannot get address"
         });
+        return false;
     }
 
     auto qualifiedId = context.qualify(location, id);
 
-    if (qualifiedId.isErr()) {
-        return qualifiedId.intoVoid();
+    if (!qualifiedId.has_value()) {
+        return false;
     }
 
-    context.setScope(qualifiedId.getOk());
+    context.setScope(qualifiedId.value());
 
     return context.assembler->assignSymbol(
         context,
@@ -48,7 +49,7 @@ VoidResult assembleLabel(
     );
 }
 
-VoidResult LabelStatement::assemble(Context& context) {
+bool LabelStatement::assemble(Context& context) {
     return assembleLabel(context, this->location, this->id);
 }
 
@@ -59,16 +60,16 @@ SymbolStatement::SymbolStatement(
     Expression* expr
 ) : Statement{location}, id{id}, expr{expr} {}
 
-VoidResult SymbolStatement::assemble(Context& context) {
-    Result<std::int64_t> result = this->expr->evaluate(context);
-    if (result.isErr()) {
-        return result.intoVoid();
+bool SymbolStatement::assemble(Context& context) {
+    std::optional<std::int64_t> result = this->expr->evaluate(context);
+    if (!result.has_value()) {
+        return false;
     }
 
     auto qualifiedId = context.qualify(this->location, this->id);
 
     return context.assembler->assignSymbol(
-        context, this->location, qualifiedId, result.getOk()
+        context, this->location, qualifiedId, result.value()
     );
 }
 
@@ -80,14 +81,14 @@ SymbolStatement::~SymbolStatement() {
 SectionStatement::SectionStatement(Location location, std::string sectionId)
 : Statement{location}, sectionId{sectionId} {}
 
-VoidResult SectionStatement::assemble(Context& context) {
+bool SectionStatement::assemble(Context& context) {
     return context.changeSection(this->location, this->sectionId);
 }
 
 
 AddressStatement::AddressStatement(Location location, Expression* expr)
     : Statement{location}, expr{expr} {}
-VoidResult AddressStatement::assemble(Context& context) {
+bool AddressStatement::assemble(Context& context) {
     return context.getSection().changeAddress(context, this->expr);
 }
 
@@ -99,7 +100,7 @@ AddressStatement::~AddressStatement() {
 AlignStatement::AlignStatement(Location location, Expression* expr)
     : Statement{location}, expr{expr} {}
 
-VoidResult AlignStatement::assemble(Context& context) {
+bool AlignStatement::assemble(Context& context) {
     return context.getSection().align(context, this->expr);
 }
 
@@ -111,7 +112,7 @@ AlignStatement::~AlignStatement() {
 ReserveStatement::ReserveStatement(Location location, Expression* expr)
 : Statement{location}, expr{expr} {}
 
-VoidResult ReserveStatement::assemble(Context& context) {
+bool ReserveStatement::assemble(Context& context) {
     return context.getSection().reserve(context, this->expr);
 }
 
@@ -126,12 +127,11 @@ DataStatement::DataStatement(
     int defaultSize
 ) : Statement{location}, elements{elements}, defaultSize{defaultSize} {}
 
-VoidResult DataStatement::assemble(Context& context) {
-    auto result = VoidResult{};
+bool DataStatement::assemble(Context& context) {
     for (auto& elem : this->elements) {
         elem->write(context, this->defaultSize);
     }
-    return result;
+    return true;
 }
 
 DataStatement::~DataStatement() {
@@ -147,7 +147,7 @@ IncludeStatement::IncludeStatement(
     std::string fileName
 ) : Statement{location}, type{type}, fileName{fileName} {}
 
-VoidResult IncludeStatement::assemble(Context& context) {
+bool IncludeStatement::assemble(Context& context) {
     if (type == IncludeStatement::Type::Assembly) {
         return context.assembler->assemble(
             context,
@@ -185,7 +185,7 @@ MacroStatement::~MacroStatement() {
     }
 }
 
-VoidResult MacroStatement::assemble(Context& context) {
+bool MacroStatement::assemble(Context& context) {
     context.frames.push({Frame::Type::Macro, this->statementId});
     for (auto& statement : this->statements) {
         statement->assemble(context);
@@ -193,7 +193,7 @@ VoidResult MacroStatement::assemble(Context& context) {
     context.frames.pop();
 
 
-    return VoidResult{};
+    return true;
 }
 
 VariableStatement::VariableStatement(
@@ -206,7 +206,7 @@ VariableStatement::~VariableStatement() {
     delete this->expr;
 }
 
-VoidResult VariableStatement::assemble(Context& context) {
+bool VariableStatement::assemble(Context& context) {
     auto s = context.currentSection;
     context.changeSection(this->location, "var");
     assembleLabel(context, this->location, this->id);

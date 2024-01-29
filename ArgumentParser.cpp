@@ -25,9 +25,9 @@ ArgumentParser::ArgumentParser(
     index{0},
     doneHandling{false} {}
 
-std::optional<const char*> ArgumentParser::getNextCstr() {
+const char* ArgumentParser::getNextCstr() {
     if (this->index >= this->argc) {
-        return {};
+        return nullptr;
     }
     return this->argv[this->index++];
 }
@@ -62,11 +62,11 @@ bool ArgumentParser::parseValue(const char* opt) {
 }
 
 bool ArgumentParser::handleOption(
-    std::optional<const Option*> maybeOption,
+    const Option* option,
     const std::string& optionName,
     bool supportsArg
 ) {
-    if (!maybeOption) {
+    if (!option) {
         this->errorStream 
             << std::format("{}: unrecognized option '{}'\n",
                 this->programName,
@@ -76,13 +76,12 @@ bool ArgumentParser::handleOption(
         // TODO: Error handling
         return false;
     }
-    auto option = *maybeOption;
 
     if (std::holds_alternative<VariableArgument>(option->argument)) {
         auto next = this->getNextCstr();
         if (!next 
             || !supportsArg
-            || (std::strlen(*next) > 0 && (*next)[0] == '-')
+            || (std::strlen(next) > 0 && next[0] == '-')
         ) {
             this->errorStream 
                 << std::format("{}: missing argument to option '{}'\n",
@@ -94,7 +93,7 @@ bool ArgumentParser::handleOption(
             return false;
         }
 
-        if (!std::get<VariableArgument>(option->argument)(*next)) {
+        if (!std::get<VariableArgument>(option->argument)(next)) {
             this->errorStream << std::format(
                 "{}: failed to parse command line argument "
                 "'{}' to option '{}'\n",
@@ -137,22 +136,22 @@ bool ArgumentParser::parseLong(std::string_view opt) {
     return this->handleOption(this->getOption(opt), std::format("--{}", opt), true);
 }
 
-std::optional<const Option*> ArgumentParser::getOption(char name) {
+const Option* ArgumentParser::getOption(char name) {
     for (auto& arg : this->options) {
         if (arg.shortName == name) {
             return &arg;
         }
     }
-    return {};
+    return nullptr;
 }
 
-std::optional<const Option*> ArgumentParser::getOption(std::string_view name) {
+const Option* ArgumentParser::getOption(std::string_view name) {
     for (auto& arg : this->options) {
         if (arg.longName == name) {
             return &arg;
         }
     }
-    return {};
+    return nullptr;
 }
 
 bool ArgumentParser::parse() {
@@ -166,9 +165,9 @@ bool ArgumentParser::parse() {
     // value (anything else)
 
     bool success = true;
-    this->programName = *this->getNextCstr();
+    this->programName = this->getNextCstr();
     while (index < argc) {
-        if (!this->parseValue(*this->getNextCstr())) {
+        if (!this->parseValue(this->getNextCstr())) {
             success = false;
         }
     }

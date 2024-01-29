@@ -1,7 +1,6 @@
 #ifndef DATAELEMENT_HPP
 #define DATAELEMENT_HPP
 
-#include "Result.hpp"
 #include "Location.hpp"
 #include "Expression.hpp"
 #include <vector>
@@ -16,7 +15,7 @@ public:
 
     DataElement(Location location);
 
-    virtual VoidResult write(Context& context, int defaultSize) = 0;
+    virtual bool write(Context& context, int defaultSize) = 0;
 
     virtual ~DataElement();
 };
@@ -28,7 +27,7 @@ public:
 
     ExpressionElement(Location location, Expression* expr, std::optional<int> size = {});
 
-    virtual VoidResult write(Context& context, int defaultSize) override;
+    virtual bool write(Context& context, int defaultSize) override;
 
     virtual ~ExpressionElement() override;
 };
@@ -40,7 +39,7 @@ public:
     StringElement(Location location, std::string str);
     StringElement(Location location, std::vector<char> data);
 
-    virtual VoidResult write(Context& context, int defaultSize) override;
+    virtual bool write(Context& context, int defaultSize) override;
 };
 
 #endif

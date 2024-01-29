@@ -1,7 +1,6 @@
 #ifndef SECTION_HPP
 #define SECTION_HPP
 
-#include "Result.hpp"
 #include "Location.hpp"
 #include "Expression.hpp"
 #include "SectionInfo.hpp"
@@ -24,84 +23,84 @@ public:
     Section();
     Section(SectionInfo* sectionInfo);
 
-    VoidResult writeInteger(
+    bool writeInteger(
         Context& context,
         const Location& location,
-        Result<std::int64_t> value,
+        std::optional<std::int64_t> value,
         int number,
         int shift = 0
     );
 
-    VoidResult writeInteger(
+    bool writeInteger(
         Context& context,
         const Expression* expr,
         int number,
         int shift = 0
     );
 
-    VoidResult writeBytes(
+    bool writeBytes(
         Context& context,
         const Location& location,
         const std::vector<char>& bytes
     );
 
-    VoidResult writeByte(
+    bool writeByte(
         Context& context,
         const Location& location,
-        Result<std::int64_t> value
+        std::optional<std::int64_t> value
     );
 
-    VoidResult writeByte(Context& context, const Expression* expr);
+    bool writeByte(Context& context, const Expression* expr);
 
-    VoidResult writeWord(
+    bool writeWord(
         Context& context, 
         const Location& location,
-        Result<std::int64_t> value
+        std::optional<std::int64_t> value
     );
 
-    VoidResult writeWord(Context& context, const Expression* expr);
+    bool writeWord(Context& context, const Expression* expr);
 
-    VoidResult writeAddress(
+    bool writeAddress(
         Context& context,
         Size size,
         const Expression* expr
     );
 
-    VoidResult writeInstruction(
+    bool writeInstruction(
         Context& context,
         const Location& location,
         const Instruction& ins,
         const std::array<Expression*, 2>& expressions
     );
 
-    VoidResult reserve(
+    bool reserve(
         Context& context,
         const Location& location,
-        Result<std::int64_t> number
+        std::optional<std::int64_t> number
     );
 
-    VoidResult reserve(Context& context, const Expression* expr);
+    bool reserve(Context& context, const Expression* expr);
 
 
-    VoidResult changeAddress(
+    bool changeAddress(
         Context& context,
         const Location& location,
-        Result<std::int64_t> address
+        std::optional<std::int64_t> address
     );
 
-    VoidResult changeAddress(Context& context, const Expression* expr);
+    bool changeAddress(Context& context, const Expression* expr);
 
-    VoidResult align(
+    bool align(
         Context& context,
         const Location& location,
-        Result<std::int64_t> number
+        std::optional<std::int64_t> number
     );
 
-    VoidResult align(Context& context, const Expression* expr);
+    bool align(Context& context, const Expression* expr);
 
     std::optional<std::int64_t> getAddress();
 
-    VoidResult assertWritable(Context& context, const Location& location) const;
+    bool assertWritable(Context& context, const Location& location) const;
 };
 
 #endif

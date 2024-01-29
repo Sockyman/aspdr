@@ -1,5 +1,4 @@
 #include "Expression.hpp"
-#include "Result.hpp"
 #include "Error.hpp"
 #include "Assembler.hpp"
 #include "Context.hpp"
@@ -21,7 +20,7 @@ BinaryExpression::BinaryExpression(
 
 Expression::~Expression() {}
 
-Result<std::int64_t> BinaryExpression::performOperation(
+std::optional<std::int64_t> BinaryExpression::performOperation(
     Context& context,
     std::int64_t x,
     std::int64_t y
@@ -34,14 +33,20 @@ Result<std::int64_t> BinaryExpression::performOperation(
         case Binary::Multiply:
             return x * y;
         case Binary::Divide:
-            if (y == 0)
-                return context.error<std::int64_t>(Error{
-                    Error::Level::Fatal, location, "division by zero."});
+            if (y == 0) {
+                context.error({
+                    Error::Level::Fatal, location, "division by zero."
+                });
+                return {};
+            }
             return x / y;
         case Binary::Modulo:
-            if (y == 0)
-                return context.error<std::int64_t>(Error{
-                    Error::Level::Fatal, location, "division by zero."});
+            if (y == 0) {
+                context.error({
+                    Error::Level::Fatal, location, "division by zero."
+                });
+                return {};
+            }
             return x % y;
         case Binary::ShiftLeft:
             return x << y;
@@ -73,12 +78,11 @@ Result<std::int64_t> BinaryExpression::performOperation(
     ASSEMBLER_ERROR("unsupported binary operator.");
 }
 
-Result<std::int64_t> BinaryExpression::evaluate(Context& context) const {
+std::optional<std::int64_t> BinaryExpression::evaluate(Context& context) const {
     auto r0 = this->operand0->evaluate(context);
     auto r1 = this->operand1->evaluate(context);
-    auto result0And1 = r0.then(r1);
-    if (result0And1.isErr()) {
-        return result0And1;
+    if (!(r0.has_value() && r1.has_value())) {
+        return {};
     }
     return this->performOperation(context, *r0, *r1);
 }
@@ -98,12 +102,12 @@ UnaryExpression::UnaryExpression(
     operation{operation},
     operand{operand} {}
 
-Result<std::int64_t> UnaryExpression::evaluate(Context& context) const {
+std::optional<std::int64_t> UnaryExpression::evaluate(Context& context) const {
     auto result = this->operand->evaluate(context);
-    if (result.isErr()) {
+    if (!result.has_value()) {
         return result;
     }
-    auto x = result.getOk();
+    auto x = result.value();
 
     switch (this->operation) {
         case Unary::Negate:
@@ -124,7 +128,7 @@ UnaryExpression::~UnaryExpression() {
 SymbolicExpression::SymbolicExpression(Location location, UnqualifiedIdentifier identifier)
     : Expression{location}, identifier{identifier} {}
 
-Result<std::int64_t> SymbolicExpression::evaluate(
+std::optional<std::int64_t> SymbolicExpression::evaluate(
     Context& context
 ) const {
     auto qualifiedId = context.qualify(this->location, this->identifier);
@@ -133,16 +137,18 @@ Result<std::int64_t> SymbolicExpression::evaluate(
     if (!symbol) {
         std::stringstream ss{};
         ss << "cannot resolve symbol \'" << this->identifier << "\'";
-        return context.error<std::int64_t>(
-            {Error::Level::Pass, this->location, ss.str()});
+        context.error({
+            Error::Level::Pass, this->location, ss.str()
+        });
+        return {};
     }
-    return Result{*symbol};
+    return *symbol;
 }
 
 LiteralExpression::LiteralExpression(Location location, std::int64_t value)
 : Expression{location}, value{value} {}
 
-Result<std::int64_t> LiteralExpression::evaluate(Context& context) const {
-    return Result{this->value};
+std::optional<std::int64_t> LiteralExpression::evaluate(Context& context) const {
+    return this->value;
 }
 

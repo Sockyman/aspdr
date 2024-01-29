@@ -5,13 +5,13 @@
 
 class InstructionStatement : public Statement {
 private:
-    VoidResult assembleAddress(
+    bool assembleAddress(
         Context& context,
         Size size,
         const Expression* expr
     );
 
-    VoidResult assembleInstruction(
+    bool assembleInstruction(
         Context& context,
         const Instruction& ins
     );
@@ -35,7 +35,7 @@ public:
 
     virtual ~InstructionStatement() override;
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 #endif

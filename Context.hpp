@@ -34,13 +34,13 @@ public:
 
     Section& getSection();
 
-    VoidResult changeSection(
+    bool changeSection(
         const Location& location,
         const std::string& newSection
     );
 
 
-    Result<Identifier> qualify(
+    std::optional<Identifier> qualify(
         const Location& location,
         const UnqualifiedIdentifier& unqualified
     );

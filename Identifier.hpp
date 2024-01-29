@@ -1,12 +1,13 @@
 #ifndef IDENTIFIER_HPP
 #define IDENTIFIER_HPP
 
-#include "Result.hpp"
 #include <string>
 #include <vector>
 #include <compare>
 #include <iostream>
 #include <cstdint>
+#include <optional>
+#include "Location.hpp"
 
 class Context;
 
@@ -36,7 +37,7 @@ public:
     UnqualifiedIdentifier(std::size_t depth, Identifier identifier);
 
 
-    Result<Identifier> qualify(
+    std::optional<Identifier> qualify(
         Context& context,
         const Location& location,
         const Identifier& id

@@ -1,10 +1,6 @@
 #include "ErrorHandler.hpp"
 #include <algorithm>
 
-VoidResult ErrorHandler::voidError(const Error& err) {
-    return this->error<std::monostate>(err);
-}
-
 bool ErrorHandler::hasErrors() const {
     return this->getErrors().size() > 0;
 }
@@ -22,5 +18,9 @@ void ErrorHandler::displayErrors(std::ostream& stream) {
     for (const auto& err : this->getErrors()) {
         std::clog << err;
     }
+}
+
+void ErrorHandler::error(const Error& err) {
+    this->getErrors().push_back(err);
 }
 

@@ -25,6 +25,7 @@ public:
     yy::location location;
     bool reachedEof;
     ParsedFile* parsed;
+    //std::unique_ptr<ParsedFile> parsed;
 
     Driver(const std::string& fileName);
     ~Driver();

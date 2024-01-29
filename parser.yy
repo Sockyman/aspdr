@@ -33,6 +33,7 @@
 
 %code {
     #include <iostream>
+    #include "Error.hpp"
     #include "Driver.hpp"
 }
 

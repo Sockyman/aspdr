@@ -13,7 +13,7 @@ ExpressionElement::ExpressionElement(
     std::optional<int> size
 ) : DataElement{location}, expression{expr}, size{size} {}
 
-VoidResult ExpressionElement::write(Context& context, int defaultSize) {
+bool ExpressionElement::write(Context& context, int defaultSize) {
     if (this->size) {
         defaultSize = *this->size;
     }
@@ -33,7 +33,7 @@ StringElement::StringElement(Location location, std::string str)
 StringElement::StringElement(Location location, std::vector<char> data)
 : DataElement{location}, data{data} {}
 
-VoidResult StringElement::write(Context& context, int defaultSize) {
+bool StringElement::write(Context& context, int defaultSize) {
     return context.getSection().writeBytes(context, this->location, this->data);
 }
 

@@ -47,19 +47,19 @@ private:
 
     const char* programName;
 
-    std::optional<const char*> getNextCstr();
+    const char* getNextCstr();
     bool parseValue(const char* opt);
     bool parseShort(std::string_view opt);
     bool parseLong(std::string_view opt);
 
     bool handleOption(
-        std::optional<const Option*> maybeOption,
+        const Option* option,
         const std::string& optionName,
         bool supportsArg = true
     );
 
-    std::optional<const Option*> getOption(char name);
-    std::optional<const Option*> getOption(std::string_view name);
+    const Option* getOption(char name);
+    const Option* getOption(std::string_view name);
 public:
     ArgumentParser(int argc, char** argv, std::ostream& errorStream);
     ArgumentParser& addOpt(Option argument);

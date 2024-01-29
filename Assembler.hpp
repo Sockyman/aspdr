@@ -34,13 +34,13 @@ private:
     std::map<std::string, ParsedFile*> parsedFiles;
     const std::span<std::string_view> includePath;
 
-    Result<ParsedFile*> getParsedFile(
+    ParsedFile* getParsedFile(
         Context& context,
         const std::string& fileName,
         std::optional<Location> location = {}
     );
 
-    std::optional<ParsedFile*> parseFile(
+    ParsedFile* parseFile(
         FILE* file,
         const std::string& fileName
     );
@@ -58,27 +58,31 @@ public:
     Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath);
     ~Assembler();
 
+    Assembler(const Assembler&) = delete;
+    Assembler& operator=(const Assembler&) = delete;
+
+
     bool run(const std::string& fileName);
 
-    VoidResult assemble(
+    bool assemble(
         Context& context,
         const std::string& fileName, 
         std::optional<Location> location = {}
     );
 
-    VoidResult assemble(
+    bool assemble(
         Context& context,
         const std::vector<Statement*>& statements
     );
 
     std::optional<std::int64_t> resolveSymbol(
-        const Result<Identifier>& identifier
+        const std::optional<Identifier>& identifier
     ) const;
 
-    VoidResult assignSymbol(
+    bool assignSymbol(
         Context& context,
         const Location& location,
-        const Result<Identifier>& identifier,
+        const std::optional<Identifier>& identifier,
         std::int64_t value
     );
 
@@ -86,17 +90,17 @@ public:
 
     void printSymbols(std::ostream& stream);
 
-    //VoidResult defineMacro(Macro macro, std::vector<Statement*> statements, int uid);
+    //bool defineMacro(Macro macro, std::vector<Statement*> statements, int uid);
 };
 
-Result<std::string> getFileName(
+std::optional<std::string> getFileName(
     Context& context,
     const std::string& filename,
     const std::span<std::string_view> includePath,
     const std::optional<Location>& location = {}
 );
 
-Result<FILE*> openFile(
+std::optional<FILE*> openFile(
     Context& context,
     const std::string& fileName,
     const std::span<std::string_view> includePath,

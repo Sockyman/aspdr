@@ -54,6 +54,7 @@ Assembler::~Assembler() {
 
 void hexdump(std::span<char> bytes) {
     const unsigned long bytesPerLine = 16;
+
     for (std::size_t i = 0; i < bytes.size(); i += bytesPerLine) {
         std::cout << std::format("{:04x}: ", i);
 
@@ -115,38 +116,38 @@ bool Assembler::run(const std::string& fileName) {
     return true;
 }
 
-VoidResult Assembler::assemble(
+bool Assembler::assemble(
     Context& context,
     const std::string& fileName,
     std::optional<Location> location
 ) {
     auto parsed = this->getParsedFile(context, fileName, location);
-    if (parsed.isErr()) {
-        return parsed.intoVoid();
+    if (!parsed) {
+        return false;
     }
 
-    if ((*parsed)->once && context.markAsIncluded(fileName)) {
-        return VoidResult{};
+    if (parsed->once && context.markAsIncluded(fileName)) {
+        return true;
     }
 
-    return this->assemble(context, (*parsed)->statements);
+    return this->assemble(context, parsed->statements);
 }
 
 
-VoidResult Assembler::assemble(
+bool Assembler::assemble(
     Context& context,
     const std::vector<Statement*>& statements
 ) {
     for (auto& statement : statements) {
         statement->assemble(context);
     }
-    return VoidResult{};
+    return true;
 }
 
 
 /// Parsing
 
-Result<ParsedFile*> Assembler::getParsedFile(
+ParsedFile* Assembler::getParsedFile(
     Context& context,
     const std::string& fileName,
     std::optional<Location> location
@@ -159,26 +160,27 @@ Result<ParsedFile*> Assembler::getParsedFile(
 
     auto file = openFile(context, fileName, this->includePath, location);
 
-    if (file.isErr()) {
-        return file.into<ParsedFile*>();
+    if (!file.has_value()) {
+        return {};
     }
 
-    auto parsed = this->parseFile(file.getOk(), fileName);
+    auto parsed = this->parseFile(file.value(), fileName);
     if (!parsed) {
-        return context.error<ParsedFile*>({
+        context.error({
             Error::Level::Syntax,
             location,
             "failed to parse file"
         });
+        return {};
     }
 
-    std::fclose(file.getOk());
+    std::fclose(*file);
 
-    this->parsedFiles[fileName] = *parsed;
+    this->parsedFiles[fileName] = parsed;
     return this->parsedFiles[fileName];
 }
 
-std::optional<ParsedFile*> Assembler::parseFile(
+ParsedFile* Assembler::parseFile(
     FILE* file,
     const std::string& fileName
 ) {
@@ -186,7 +188,7 @@ std::optional<ParsedFile*> Assembler::parseFile(
     yyin = file;
 
     if (driver.parseFile()) {
-        return {};
+        return nullptr;
     }
     return driver.parsed;
 }
@@ -194,39 +196,40 @@ std::optional<ParsedFile*> Assembler::parseFile(
 /// Symbols
 
 std::optional<std::int64_t> Assembler::resolveSymbol(
-    const Result<Identifier>& identifier
+    const std::optional<Identifier>& identifier
 ) const {
-    if (identifier.isErr()) {
+    if (!identifier) {
         return {};
     }
 
-    if (!this->symbols.contains(identifier.getOk())) {
+    if (!this->symbols.contains(*identifier)) {
         return {};
     }
-    return {this->symbols.at(identifier.getOk())};
+    return {this->symbols.at(*identifier)};
 }
 
-VoidResult Assembler::assignSymbol(
+bool Assembler::assignSymbol(
     Context& context,
     const Location& location,
-    const Result<Identifier>& identifier,
+    const std::optional<Identifier>& identifier,
     std::int64_t value
 ) {
-    if (identifier.isErr()) {
-        return identifier.intoVoid();
+    if (!identifier) {
+        return identifier.has_value();
     }
 
     //std::cout << "id: " << identifier.getOk() << '\n';
 
-    auto existing = this->resolveSymbol(identifier.getOk());
+    auto existing = this->resolveSymbol(*identifier);
     if (existing && *existing != value) {
         std::stringstream ss{};
-        ss << "redefinition of \'" << identifier.getOk() << "\'";
-        return context.voidError({Error::Level::Fatal, location, ss.str()});
+        ss << "redefinition of \'" << *identifier << "\'";
+        context.error({Error::Level::Fatal, location, ss.str()});
+        return false;
     }
 
-    this->symbols[identifier.getOk()] = value;
-    return VoidResult{};
+    this->symbols[identifier.value()] = value;
+    return true;
 }
 
 void Assembler::printSymbols(std::ostream& stream) {
@@ -258,7 +261,7 @@ bool fileExists(const std::filesystem::path& fileName) {
     return true;
 }
 
-Result<std::string> getFileName(
+std::optional<std::string> getFileName(
     Context& context,
     const std::string& fileName,
     const std::span<std::string_view> includePath,
@@ -281,12 +284,13 @@ Result<std::string> getFileName(
 
     std::stringstream ss{};
     ss << "no such file '" << fileName << "'";
-    return context.error<std::string>({
+    context.error({
         Error::Level::Fatal, location, ss.str()
     });
+    return {};
 }
 
-Result<FILE*> openFile(
+std::optional<FILE*> openFile(
     Context& context,
     const std::string& fileName,
     const std::span<std::string_view> includePath,
@@ -297,16 +301,16 @@ Result<FILE*> openFile(
     }
 
     auto resolvedPath = getFileName(context, fileName, includePath, location);
-    if (resolvedPath.isErr()) {
-        return resolvedPath.into<FILE*>();
+    if (!resolvedPath.has_value()) {
+        return {};
     }
 
-    FILE* file = std::fopen(resolvedPath.getOk().c_str(), "r");
+    FILE* file = std::fopen(resolvedPath.value().c_str(), "r");
     ASSEMBLER_ASSERT(file, "failed to open file");
     return file;
 }
 
-//VoidResult Assembler::defineMacro(Macro macro, std::vector<Statement*> statements);
+//bool Assembler::defineMacro(Macro macro, std::vector<Statement*> statements);
 
-//Result<const MicroSequence*> Assembler::findInstruction(const Instruction& lookup) {
+//std::optional<const MicroSequence*> Assembler::findInstruction(const Instruction& lookup) {
 //}

@@ -1,6 +1,5 @@
 #include "Driver.hpp"
 #include "Assembler.hpp"
-#include "Result.hpp"
 #include "Error.hpp"
 #include "parser.hpp"
 #include "ArgumentParser.hpp"
@@ -12,6 +11,8 @@
 #include <optional>
 #include <format>
 #include <functional>
+
+// extern const char timestamp[];
 
 int main(int argc, char** argv) {
     enum class Action {
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
             argumentParser.printHelp(std::clog);
             break;
         case Action::version:
-            argumentParser.printVersion(std::clog, DATETIME);
+            argumentParser.printVersion(std::clog, "");
             break;
     }
 

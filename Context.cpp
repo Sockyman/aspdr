@@ -19,17 +19,18 @@ Section& Context::getSection() {
     return sections[currentSection];
 }
 
-VoidResult Context::changeSection(
+bool Context::changeSection(
     const Location& location,
     const std::string& newSection
 ) {
     if (!this->sections.contains(newSection)) {
         std::stringstream ss{};
         ss << "section \'" << newSection << "\' does not exist";
-        return this->voidError({Error::Level::Fatal, location, ss.str()});
+        this->error({Error::Level::Fatal, location, ss.str()});
+        return false;
     }
     this->currentSection = newSection;
-    return VoidResult{};
+    return true;
 }
 
 std::vector<Error>& Context::getErrors() {
@@ -48,7 +49,7 @@ bool Context::markAsIncluded(const std::string& fileName) {
     return false;
 }
 
-Result<Identifier> Context::qualify(
+std::optional<Identifier> Context::qualify(
     const Location& location,
     const UnqualifiedIdentifier& unqualified
 ) {

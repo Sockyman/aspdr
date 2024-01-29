@@ -8,14 +8,13 @@ SRCS := parser.cpp scanner.cpp main.cpp Driver.cpp Expression.cpp \
 	Context.cpp ErrorHandler.cpp DataElement.cpp Frame.cpp Macro.cpp \
 	ArgumentParser.cpp
 
+
 OBJECTS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
 
-DATETIME := -D 'DATETIME="$(shell date "+%Y/%m/%d %H:%M:%S")"'
-
 CXXFLAGS := -std=c++20 -g -c -MMD -MP -Wall -pedantic -O0
 LDFLAGS := -lspdr-firmware
-CPPFLAGS := $(DATETIME)
+CPPFLAGS :=
 
 $(BUILD_DIR)/$(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
@@ -41,6 +40,5 @@ clean:
 .PHONY: install
 install:
 	cp $(BUILD_DIR)/$(TARGET) $(HOME)/.local/bin/$(TARGET)
-
 
 -include $(DEPS)

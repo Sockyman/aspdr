@@ -1,6 +1,5 @@
 #include "Identifier.hpp"
 #include "Context.hpp"
-#include "Result.hpp"
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -68,7 +67,7 @@ UnqualifiedIdentifier::UnqualifiedIdentifier(
     Identifier identifier
 ) : identifier{identifier}, depth{depth} {}
 
-Result<Identifier> UnqualifiedIdentifier::qualify(
+std::optional<Identifier> UnqualifiedIdentifier::qualify(
     Context& context,
     const Location& location,
     const Identifier& id
@@ -76,11 +75,12 @@ Result<Identifier> UnqualifiedIdentifier::qualify(
     if (id.value.size() < this->depth) {
         std::stringstream ss{};
         ss << "cannot qualify '" << *this << "' with '" << id << "'";
-        return context.error<Identifier>({
+        context.error({
             Error::Level::Fatal,
             location,
             ss.str(),
         });
+        return {};
     }
 
     std::vector<std::string> v{};

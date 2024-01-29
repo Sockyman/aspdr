@@ -4,7 +4,6 @@
 #include "Expression.hpp"
 #include "Identifier.hpp"
 #include "Location.hpp"
-#include "Result.hpp"
 #include "DataElement.hpp"
 #include <SpdrFirmware/Instruction.hpp>
 #include <SpdrFirmware/Mode.hpp>
@@ -22,7 +21,7 @@ public:
 
     Statement();
     Statement(Location location);
-    virtual VoidResult assemble(Context& context) = 0;
+    virtual bool assemble(Context& context) = 0;
 
     virtual ~Statement();
 };
@@ -34,7 +33,7 @@ public:
     //LabelStatement();
     LabelStatement(Location location, UnqualifiedIdentifier id);
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 class SymbolStatement : public Statement {
@@ -45,7 +44,7 @@ public:
     //SymbolStatement();
     SymbolStatement(Location location, UnqualifiedIdentifier id, Expression* expr);
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 
     virtual ~SymbolStatement() override;
 };
@@ -57,7 +56,7 @@ public:
 
     //SectionStatement();
     SectionStatement(Location location, std::string sectionId);
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 class AddressStatement : public Statement {
@@ -66,7 +65,7 @@ public:
 
     //AddressStatement();
     AddressStatement(Location location, Expression* expr);
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 
     virtual ~AddressStatement() override;
 };
@@ -77,7 +76,7 @@ public:
 
     //AlignStatement();
     AlignStatement(Location location, Expression* expr);
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 
     virtual ~AlignStatement() override;
 };
@@ -88,7 +87,7 @@ public:
 
     //ReserveStatement();
     ReserveStatement(Location location, Expression* expr);
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 
     virtual ~ReserveStatement() override;
 };
@@ -101,7 +100,7 @@ public:
     //DataStatement();
     DataStatement(Location location, std::vector<DataElement*> elements, int defaultSize = 1);
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 
     virtual ~DataStatement() override;
 };
@@ -118,7 +117,7 @@ public:
 
     //IncludeStatement();
     IncludeStatement(Location location, IncludeStatement::Type type, std::string fileName);
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 class MacroStatement : public Statement {
@@ -129,7 +128,7 @@ public:
     MacroStatement(Location location, std::string name, std::vector<Statement*> statements);
     virtual ~MacroStatement() override;
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 class VariableStatement : public Statement {
@@ -140,7 +139,7 @@ public:
     VariableStatement(Location, UnqualifiedIdentifier id, Expression* expr);
     virtual ~VariableStatement() override;
 
-    virtual VoidResult assemble(Context& context) override;
+    virtual bool assemble(Context& context) override;
 };
 
 #endif

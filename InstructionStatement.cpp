@@ -27,8 +27,15 @@ InstructionStatement::~InstructionStatement() {
     }
 }
 
-VoidResult InstructionStatement::assemble(Context& context) {
-    return context.getSection().writeInstruction(context, this->location, this->instruction, {this->expressions});
+bool InstructionStatement::assemble(Context& context) {
+    return context
+        .getSection()
+        .writeInstruction(
+            context,
+            this->location,
+            this->instruction,
+            {this->expressions}
+        );
     //return this->assembleInstruction(context, this->instruction);
 }
 
