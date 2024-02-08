@@ -166,12 +166,11 @@ ParsedFile* Assembler::getParsedFile(
 
     auto parsed = this->parseFile(file.value(), fileName);
     if (!parsed) {
-        context.error({
+        return context.error(
             Error::Level::Syntax,
-            location,
-            "failed to parse file"
-        });
-        return {};
+            "failed to parse file",
+            location
+        );
     }
 
     std::fclose(*file);
@@ -224,8 +223,7 @@ bool Assembler::assignSymbol(
     if (existing && *existing != value) {
         std::stringstream ss{};
         ss << "redefinition of \'" << *identifier << "\'";
-        context.error({Error::Level::Fatal, location, ss.str()});
-        return false;
+        return context.error(Error::Level::Fatal, ss.str(), location);
     }
 
     this->symbols[identifier.value()] = value;
@@ -281,13 +279,11 @@ std::optional<std::string> getFileName(
         }
     }
 
-
     std::stringstream ss{};
     ss << "no such file '" << fileName << "'";
-    context.error({
-        Error::Level::Fatal, location, ss.str()
-    });
-    return {};
+    return context.error(
+        Error::Level::Fatal, ss.str(), location
+    );
 }
 
 std::optional<FILE*> openFile(

@@ -26,8 +26,7 @@ bool Context::changeSection(
     if (!this->sections.contains(newSection)) {
         std::stringstream ss{};
         ss << "section \'" << newSection << "\' does not exist";
-        this->error({Error::Level::Fatal, location, ss.str()});
-        return false;
+        return this->error(Error::Level::Fatal, ss.str(), location);
     }
     this->currentSection = newSection;
     return true;

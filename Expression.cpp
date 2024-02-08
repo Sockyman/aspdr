@@ -34,17 +34,17 @@ std::optional<std::int64_t> BinaryExpression::performOperation(
             return x * y;
         case Binary::Divide:
             if (y == 0) {
-                context.error({
-                    Error::Level::Fatal, location, "division by zero."
-                });
+                return context.error(
+                    Error::Level::Fatal, "division by zero.", location
+                );
                 return {};
             }
             return x / y;
         case Binary::Modulo:
             if (y == 0) {
-                context.error({
-                    Error::Level::Fatal, location, "division by zero."
-                });
+                return context.error(
+                    Error::Level::Fatal, "division by zero.", location
+                );
                 return {};
             }
             return x % y;
@@ -137,10 +137,10 @@ std::optional<std::int64_t> SymbolicExpression::evaluate(
     if (!symbol) {
         std::stringstream ss{};
         ss << "cannot resolve symbol \'" << this->identifier << "\'";
-        context.error({
-            Error::Level::Pass, this->location, ss.str()
-        });
-        return {};
+        return context.error(
+            Error::Level::Pass, ss.str(), this->location
+        );
+        return std::nullopt;
     }
     return *symbol;
 }

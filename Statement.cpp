@@ -25,12 +25,11 @@ bool assembleLabel(
 ) {
     auto address = context.getSection().getAddress();
     if (!address) {
-        context.error({
+        return context.error(
             Error::Level::Pass,
-            location,
-            "cannot get address"
-        });
-        return false;
+            "cannot get address",
+            location
+        );
     }
 
     auto qualifiedId = context.qualify(location, id);

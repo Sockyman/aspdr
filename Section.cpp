@@ -18,8 +18,7 @@ bool Section::assertWritable(
     if (!this->sectionInfo->writable) {
         std::stringstream ss{};
         ss << "section \'" << this->sectionInfo->name << "\' is not writable";
-        context.error({Error::Level::Fatal, location, ss.str()});
-        return false;
+        return context.error(Error::Level::Fatal, ss.str(), location);
     }
     return true;
 }
@@ -118,8 +117,7 @@ bool Section::writeInstruction(
     if (!micros) {
         std::stringstream ss{};
         ss << "instruction \'" << ins << "\' does not exist";
-        context.error({Error::Level::Fatal, location, ss.str()});
-        return false;
+        return context.error(Error::Level::Fatal, ss.str(), location);
     }
 
     auto opcode = context.assembler->instructionSet.getOpcode(ins);
@@ -149,10 +147,9 @@ bool Section::reserve(
     }
 
     if (number.value() < 0) {
-        context.error(
-            {Error::Level::Fatal, location, "reserve must be positive"}
+        return context.error(
+            Error::Level::Fatal, "reserve must be positive", location
         );
-        return false;
     }
 
     if (!this->offset) {
@@ -194,12 +191,11 @@ bool Section::changeAddress(
             *this->getAddress()
         );
 
-        context.error({
+        return context.error(
             Error::Level::Fatal,
-            location,
-            message
-        });
-        return false;
+            message,
+            location
+        );
     }
     return this->reserve(
         context,
@@ -236,10 +232,9 @@ bool Section::align(
     auto reservation = *number - (*address % *number);
 
     if (reservation < 0) {
-        context.error(
+        return context.error(
             {Error::Level::Fatal, location, "align must be positive"}
         );
-        return false;
     }
     return this->reserve(context, location, reservation);
 }

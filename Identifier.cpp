@@ -75,12 +75,12 @@ std::optional<Identifier> UnqualifiedIdentifier::qualify(
     if (id.value.size() < this->depth) {
         std::stringstream ss{};
         ss << "cannot qualify '" << *this << "' with '" << id << "'";
-        context.error({
+
+        return context.error(
             Error::Level::Fatal,
-            location,
             ss.str(),
-        });
-        return {};
+            location
+        );
     }
 
     std::vector<std::string> v{};
