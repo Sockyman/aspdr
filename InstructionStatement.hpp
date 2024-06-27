@@ -18,20 +18,13 @@ private:
 
 public:
     const Instruction instruction;
-    const std::array<Expression*, 2> expressions;
-
-    InstructionStatement(Location location, Instruction instruction);
+    const std::vector<Expression*> arguments;
 
     InstructionStatement(
         Location location,
-        Instruction instruction,
-        Expression* expr);
-
-    InstructionStatement(
-        Location location,
-        Instruction instruction,
-        Expression* expr0,
-        Expression* expr1);
+        std::string name,
+        std::vector<std::pair<Address, Expression*>> mode
+    );
 
     virtual ~InstructionStatement() override;
 

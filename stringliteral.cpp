@@ -1,6 +1,5 @@
 #include "stringliteral.hpp"
 #include <string>
-#include <span>
 
 char nextChar(std::string_view& str) {
     if (str.length() <= 0) {

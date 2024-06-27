@@ -1,7 +1,6 @@
 #ifndef STRINGLITERAL_HPP
 #define STRINGLITERAL_HPP
 
-#include <string>
 #include <vector>
 #include <string_view>
 #include <cstdint>

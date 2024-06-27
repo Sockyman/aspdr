@@ -6,6 +6,7 @@
 #include "Section.hpp"
 #include "Assembler.hpp"
 #include "Frame.hpp"
+#include "MacroStatement.hpp"
 #include <map>
 #include <string>
 #include <set>
@@ -22,6 +23,7 @@ public:
     std::set<std::string> includedFiles;
 
     std::vector<std::string> fileNames;
+    std::map<Instruction, MacroStatement*> macros;
 
     FrameStack frames;
 
@@ -48,6 +50,8 @@ public:
     void setScope(const Identifier& id);
 
     bool markAsIncluded(const std::string& fileName);
+
+    bool addMacro(MacroStatement* macro);
 };
 
 #endif

@@ -1,5 +1,4 @@
 #include "Error.hpp"
-#include <ranges>
 
 AssemblerError::AssemblerError(std::string message) : message{message} {
 }

@@ -7,22 +7,21 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <vector>
 
-#define ASSEMBLER_ERROR(MESSAGE) { \
+#define ASSEMBLER_ERROR(MESSAGE) do { \
         std::stringstream ss{}; \
         ss << __FILE__ << ":" \
             << __LINE__ << ": " \
             << __PRETTY_FUNCTION__ << ": " \
             << (MESSAGE); \
         throw AssemblerError{ss.str()}; \
-    }
+    } while (false)
 
-#define ASSEMBLER_ASSERT(ASSERTION, MESSAGE) { \
+#define ASSEMBLER_ASSERT(ASSERTION, MESSAGE) do { \
         if (!(ASSERTION)) { \
             ASSEMBLER_ERROR((MESSAGE)); \
         } \
-    }
+    } while (false)
 
 #define UNREACHABLE ASSEMBLER_ERROR("unreachable code reached")
 

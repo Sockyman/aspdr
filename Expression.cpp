@@ -2,7 +2,7 @@
 #include "Error.hpp"
 #include "Assembler.hpp"
 #include "Context.hpp"
-#include <stdexcept>
+#include <sstream>
 
 Expression::Expression(Location location) : location{location} {
 }
@@ -20,6 +20,18 @@ BinaryExpression::BinaryExpression(
 
 Expression::~Expression() {}
 
+std::optional<std::int64_t> Expression::mustEvaluate(Context& context) const {
+    auto value = this->evaluate(context);
+    if (!value) {
+        context.error(
+            Error::Level::Syntax,
+            "must evaluate expression on first pass.",
+            location
+        );
+    }
+    return value;
+}
+
 std::optional<std::int64_t> BinaryExpression::performOperation(
     Context& context,
     std::int64_t x,
@@ -34,18 +46,18 @@ std::optional<std::int64_t> BinaryExpression::performOperation(
             return x * y;
         case Binary::Divide:
             if (y == 0) {
-                return context.error(
+                context.error(
                     Error::Level::Fatal, "division by zero.", location
                 );
-                return {};
+                return std::nullopt;
             }
             return x / y;
         case Binary::Modulo:
             if (y == 0) {
-                return context.error(
+                context.error(
                     Error::Level::Fatal, "division by zero.", location
                 );
-                return {};
+                return std::nullopt;
             }
             return x % y;
         case Binary::ShiftLeft:
@@ -82,10 +94,11 @@ std::optional<std::int64_t> BinaryExpression::evaluate(Context& context) const {
     auto r0 = this->operand0->evaluate(context);
     auto r1 = this->operand1->evaluate(context);
     if (!(r0.has_value() && r1.has_value())) {
-        return {};
+        return std::nullopt;
     }
     return this->performOperation(context, *r0, *r1);
 }
+
 
 BinaryExpression::~BinaryExpression() {
     delete this->operand0;
@@ -134,16 +147,16 @@ std::optional<std::int64_t> SymbolicExpression::evaluate(
     auto qualifiedId = context.qualify(this->location, this->identifier);
     auto symbol = context.assembler->resolveSymbol(qualifiedId);
 
-    if (!symbol) {
+    if (!symbol.has_value()) {
         std::stringstream ss{};
         ss << "cannot resolve symbol \'" << this->identifier << "\'";
-        return context.error(
-            Error::Level::Pass, ss.str(), this->location
-        );
+        context.error(Error::Level::Pass, ss.str(), this->location);
         return std::nullopt;
     }
+
     return *symbol;
 }
+
 
 LiteralExpression::LiteralExpression(Location location, std::int64_t value)
 : Expression{location}, value{value} {}

@@ -1,4 +1,5 @@
 #include "Context.hpp"
+#include <sstream>
 
 Context::Context(Assembler* assembler)
 :   assembler{assembler},
@@ -8,7 +9,6 @@ Context::Context(Assembler* assembler)
     fileNames{},
     frames{},
     scope{}
-
 {
     for (auto& sec : assembler->sections) {
         sections[sec.first] = Section{&sec.second};
@@ -26,7 +26,8 @@ bool Context::changeSection(
     if (!this->sections.contains(newSection)) {
         std::stringstream ss{};
         ss << "section \'" << newSection << "\' does not exist";
-        return this->error(Error::Level::Fatal, ss.str(), location);
+        this->error(Error::Level::Fatal, ss.str(), location);
+        return false;
     }
     this->currentSection = newSection;
     return true;
@@ -57,5 +58,23 @@ std::optional<Identifier> Context::qualify(
 
 void Context::setScope(const Identifier& id) {
     this->scope = id;
+}
+
+bool Context::addMacro(MacroStatement* macro) {
+    Instruction ins{macro->getInstruction()};
+    if (this->assembler->instructionSet.getInstruction(ins)) {
+        std::stringstream ss{};
+        ss << "instruction " << ins << " is already defined";
+        this->error(Error::Level::Fatal, ss.str(), macro->location);
+        return false;
+    }
+    if (this->macros.contains(ins)) {
+        std::stringstream ss{};
+        ss << "macro " << ins << " is already defined";
+        this->error(Error::Level::Fatal, ss.str(), macro->location);
+        return false;
+    }
+    this->macros[ins] = macro;
+    return true;
 }
 

@@ -7,19 +7,22 @@
 %define api.value.type variant
 %define parse.assert
 
+
 %code requires {
     #include "Expression.hpp"
     #include "Statement.hpp"
     #include "InstructionStatement.hpp"
+    #include "MacroStatement.hpp"
     #include <SpdrFirmware/Register.hpp>
     #include <SpdrFirmware/Mode.hpp>
     #include <string>
     #include <cstdint>
     #include <memory>
-    #include <tuple>
     #include <vector>
     #include <cstdio>
+    #include <tuple>
     class Driver;
+    class Block;
 
     extern std::FILE* yyin;
 }
@@ -84,9 +87,16 @@
     MACRO "macro"
     ENDMACRO "endmacro"
     VARIABLE "variable"
+    PROVIDES "provides"
+    IF "if"
+    ELSE "else"
+    ELSEIF "elseif"
+    REPEAT "repeat"
+    END "end"
+    NAMESPACE "namespace"
     ;
 
-%token A C D CD F
+%token A C D CD F SP
 
 %token <UnqualifiedIdentifier> UID "raw_unqualified_id"
 %token <std::string> IDENTIFIER "identifier" STRING "string";
@@ -97,36 +107,40 @@
 %start target;
 
 target
-    : statements
+    : statements {driver.parsed = $1;}
     ;
 
+%nterm <Block*> statements;
 statements
-    : statements push_statement
-    | push_statement
+    : statements_nonempty {$$ = $1;}
+    | %empty {$$ = new Block{};}
     ;
 
-push_statement
-    : complete_statement {if ($1) driver.push($1);}
+%nterm <Block*> statements_nonempty;
+statements_nonempty
+    : statements_nonempty complete_statement {if ($2) $1->push($2); $$ = $1;}
+    | complete_statement {$$ = new Block{}; if ($1) $$->push($1);}
+    | "once" newline {$$ = new Block{}; $$->once = true;}
+    | statements_nonempty "once" newline {$$ = $1; $$->once = true;}
     ;
 
 %nterm <Statement*> complete_statement;
 complete_statement
-    : statement {$$ = $1;}
-    | ENDLINE {$$ = nullptr;}
-    | "once" ENDLINE {driver.parsed->once = true; $$ = nullptr; }
-    | error ENDLINE {$$ = nullptr;}
+    : statement
+    | error newline {$$ = nullptr;}
     ;
 
 %nterm <Statement*> statement;
 statement
-    : label {$$ = $1;}
-    | statement_endline ENDLINE {$$ = $1;}
+    : label
+    | statement_endline newline {$$ = $1;}
+    | newline {$$ = nullptr;}
     ;
 
 %nterm <Statement*> statement_endline;
 statement_endline
-    : instruction {$$ = $1;}
-    | symbol {$$ = $1;}
+    : instruction
+    | symbol
     | "section" STRING {$$ = new SectionStatement{@$, $2};}
     | "address" expression {$$ = new AddressStatement{@$, $2};}
     | "align" expression {$$ = new AlignStatement{@$, $2};}
@@ -135,19 +149,41 @@ statement_endline
     | "dataw" data_element_list {$$ = new DataStatement(@$, $2, 2);}
     | "include" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Assembly, $2);}
     | "include_bin" STRING {$$ = new IncludeStatement(@$, IncludeStatement::Type::Binary, $2);}
-    | macro_statement {$$ = $1;}
+    | macro_statement
     | VARIABLE ident expression {$$ = new VariableStatement(@$, $2, $3);}
+    | "provides" STRING {$$ = new ProvidesStatement(@$, $2);}
+    | conditional_assembly
+    | repeat_block
+    ;
+
+%nterm <Statement*> conditional_assembly;
+conditional_assembly
+    : "if" expression newline statements else_conditional
+        {$$ = new ConditionalStatement{@1, $2, $4, $5};}
+    ;
+
+%nterm <std::optional<Block*>> else_conditional;
+else_conditional
+    : "else" newline statements "end" {$$ = {$3};}
+    | "end" {$$ = std::nullopt;}
+    | "elseif" expression newline statements else_conditional
+        {$$ = new Block{{new ConditionalStatement{@1, $2, $4, $5}}};}
+    ;
+
+%nterm <Statement*> repeat_block;
+repeat_block
+    : "repeat" IDENTIFIER "," expression newline statements "end"
+        {$$ = new RepeatStatement{@$, $4, $6, $2};}
+    | "repeat" expression newline statements "end"
+        {$$ = new RepeatStatement{@$, $2, $4};}
     ;
 
 %nterm <Statement*> macro_statement;
 macro_statement
-    : "macro" IDENTIFIER ENDLINE statement_vec "endmacro" { $$ = new MacroStatement(@$, $2, std::move($4)); }
-    ;
-
-%nterm <std::vector<Statement*>> statement_vec;
-statement_vec
-    : statement_vec complete_statement {if ($2) $1.push_back($2); $$ = std::move($1);}
-    | complete_statement {std::vector<Statement*> v{}; if ($1) v.push_back($1); $$ = v; }
+    : "macro" IDENTIFIER parameter_list newline statements "endmacro"
+        { $$ = new MacroStatement(@$, $2, $3, $5); }
+    | "macro" IDENTIFIER newline statements "endmacro"
+        { $$ = new MacroStatement(@$, $2, {}, $4); }
     ;
 
 %nterm <std::vector<DataElement*>> data_element_list;
@@ -170,17 +206,16 @@ data_size
     | "bytes" "(" INTEGER ")" {$$ = $3;}
     ;
 
-%nterm <std::vector<Expression*>> expression_list;
-expression_list
-    : expression {$$ = {$1};}
-    | expression_list "," expression {$$ = $1; $$.push_back($3);}
+%nterm <Statement*> instruction;
+instruction
+    : IDENTIFIER {$$ = new InstructionStatement{@$, $1, {}};}
+    | IDENTIFIER mode_list {$$ = new InstructionStatement{@$, $1, std::move($2)};}
     ;
 
-%nterm <InstructionStatement*> instruction;
-instruction
-    : IDENTIFIER {$$ = new InstructionStatement{@$, {$1, {Mode::Implied}}};}
-    | IDENTIFIER mode {$$ = new InstructionStatement{@$, {$1, {$2.first}}, $2.second};}
-    | IDENTIFIER mode "," mode {$$ = new InstructionStatement{@$, {$1, {$2.first, $4.first}}, $2.second, $4.second};}
+%nterm <std::vector<std::pair<Address, Expression*>>> mode_list;
+mode_list
+    : mode {$$ = std::vector<std::pair<Address, Expression*>>{}; $$.push_back($1);}
+    | mode_list "," mode {$1.push_back($3); $$ = std::move($1);}
     ;
 
 %nterm <std::pair<Address, Expression*>> mode;
@@ -192,6 +227,25 @@ mode
     | "[" reg "," expression "]" {$$ = {{Mode::Offset, $2}, $4};}
     ;
 
+%nterm <std::vector<std::pair<Address, std::optional<std::string>>>> parameter_list;
+parameter_list
+    : parameter_mode {$$ = {}; $$.push_back($1);}
+    | parameter_list "," parameter_mode {$$ = std::move($1); $$.push_back($3);}
+    ;
+
+%nterm <std::pair<Address, std::optional<std::string>>> parameter_mode;
+parameter_mode
+    : reg         {$$ = {$1, {}};}
+    | IDENTIFIER {$$ = {Mode::Immediate, $1};}
+    | "[" reg "]" {$$ = {{Mode::Indirect, $2}, {}};}
+    | "[" IDENTIFIER "]" {$$ = {Mode::Direct, $2};}
+    | "[" reg "," IDENTIFIER "]" {$$ = {{Mode::Offset, $2}, $4};}
+    ;
+
+newline
+    : ENDLINE
+    ;
+
 %nterm <RID> reg;
 reg
     : A  {$$ = RID::A;}
@@ -199,14 +253,15 @@ reg
     | D  {$$ = RID::D;}
     | CD {$$ = RID::CD;}
     | F  {$$ = RID::F;}
+    | SP {$$ = RID::Sp;}
     ;
 
-%nterm <LabelStatement*> label;
+%nterm <Statement*> label;
 label
     : ident ":" {$$ = new LabelStatement{@$, $1};}
     ;
 
-%nterm <SymbolStatement*> symbol;
+%nterm <Statement*> symbol;
 symbol
     : ident "=" expression {$$ = new SymbolStatement{@$, $1, $3};}
     ;

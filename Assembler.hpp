@@ -5,9 +5,6 @@
 #include "Identifier.hpp"
 #include "Section.hpp"
 #include "SectionInfo.hpp"
-#include "Driver.hpp"
-#include "ErrorHandler.hpp"
-#include "Macro.hpp"
 #include <SpdrFirmware/InstructionSet.hpp>
 #include <SpdrFirmware/MicroSequence.hpp>
 #include <cstdint>
@@ -16,8 +13,6 @@
 #include <map>
 #include <string>
 #include <optional>
-#include <tuple>
-#include <filesystem>
 #include <span>
 #include <string_view>
 
@@ -31,16 +26,20 @@ class Context;
 class Assembler {
 private:
     std::map<Identifier, std::int64_t> symbols;
-    std::map<std::string, ParsedFile*> parsedFiles;
+    std::map<std::string, Block*> parsedFiles;
     const std::span<std::string_view> includePath;
+    const SectionMode sectionMode;
+    const std::optional<std::string> prelude;
 
-    ParsedFile* getParsedFile(
+    //std::map<int, std::map<int, std::int64_t>> numericLabels;
+
+    Block* getParsedFile(
         Context& context,
         const std::string& fileName,
         std::optional<Location> location = {}
     );
 
-    ParsedFile* parseFile(
+    Block* parseFile(
         FILE* file,
         const std::string& fileName
     );
@@ -53,9 +52,7 @@ public:
     std::map<std::string, SectionInfo> sections;
     const InstructionSet instructionSet;
 
-    std::map<Macro, std::pair<std::vector<Statement*>, int>> macros;
-
-    Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath);
+    Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath, std::optional<std::string> prelude);
     ~Assembler();
 
     Assembler(const Assembler&) = delete;

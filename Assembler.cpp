@@ -7,41 +7,38 @@
 #include <sstream>
 #include <cstdio>
 #include <vector>
-#include <functional>
 #include <filesystem>
 #include <format>
 #include <span>
 
-Assembler::Assembler(SectionMode sectionMode, const std::span<std::string_view> includePath)
+
+Assembler::Assembler(
+    SectionMode sectionMode,
+    const std::span<std::string_view> includePath,
+    std::optional<std::string> prelude
+)
 :   symbols{},
     parsedFiles{},
     includePath{includePath},
+    sectionMode{sectionMode},
+    prelude{prelude},
     binaryFiles{},
     sections{},
     instructionSet{}
 {
-    std::int64_t codeStart;
-    std::int64_t codeEnd;
-    std::int64_t varStart;
-    std::int64_t varEnd;
-
     switch (sectionMode) {
         case SectionMode::ROM:
-            codeStart = 0x0000;
-            codeEnd = 0x8000;
-            varStart = 0x8000;
-            varEnd = 0xff00;
+            createSection("code", true, 0x0000, 0x8000);
+            createSection("var", false, 0x8000, 0xff00);
             break;
         case SectionMode::RAM:
-            codeStart = 0x9000;
-            codeEnd = 0xc000;
-            varStart = 0xc000;
-            varEnd = 0xff00;
+            createSection("code", true, 0x9000, 0xc000);
+            createSection("var", false, 0xc000, 0xff00);
             break;
     }
 
-    this->createSection("code", true, codeStart, codeEnd);
-    this->createSection("var", false, varStart, varEnd);
+    symbols[Identifier{"ROM"}] = sectionMode == SectionMode::ROM ? 1 : 0;
+    symbols[Identifier{"RAM"}] = sectionMode == SectionMode::RAM ? 1 : 0;
 }
 
 Assembler::~Assembler() {
@@ -84,15 +81,30 @@ Context Assembler::passes(const std::string& fileName) {
 
     int pass = 0;
     for (;;) {
+        //std::clog << "PASS: " << pass << '\n';
         Context context = Context{this};
 
-        this->assemble(context, fileName, {});
+        if (this->prelude.has_value()) {
+            this->assemble(context, this->prelude.value());
+        }
+
+        this->assemble(context, fileName);
 
         if (!context.hasErrors() 
             || previousErrors == context.getErrors()
             || context.hasErrorLevel(Error::Level::Syntax)
-            || pass++ == maxPasses
         ) {
+            return context;
+        }
+
+        if (pass++ >= maxPasses) {
+            context.error(
+                Error::Level::Fatal,
+                std::format(
+                    "maximum assembler passes ({}) exceeded.",
+                    maxPasses
+                )
+            );
             return context;
         }
 
@@ -108,7 +120,7 @@ bool Assembler::run(const std::string& fileName) {
         return false;
     }
 
-    auto& bytes = context.sections["code"].bytes;
+    auto bytes = context.sections["code"].getBytes();
 
     std::cout.write(bytes.data(), bytes.size());
     //hexdump(bytes);
@@ -147,7 +159,7 @@ bool Assembler::assemble(
 
 /// Parsing
 
-ParsedFile* Assembler::getParsedFile(
+Block* Assembler::getParsedFile(
     Context& context,
     const std::string& fileName,
     std::optional<Location> location
@@ -166,11 +178,12 @@ ParsedFile* Assembler::getParsedFile(
 
     auto parsed = this->parseFile(file.value(), fileName);
     if (!parsed) {
-        return context.error(
+        context.error(
             Error::Level::Syntax,
             "failed to parse file",
             location
         );
+        return nullptr;
     }
 
     std::fclose(*file);
@@ -179,7 +192,7 @@ ParsedFile* Assembler::getParsedFile(
     return this->parsedFiles[fileName];
 }
 
-ParsedFile* Assembler::parseFile(
+Block* Assembler::parseFile(
     FILE* file,
     const std::string& fileName
 ) {
@@ -198,13 +211,14 @@ std::optional<std::int64_t> Assembler::resolveSymbol(
     const std::optional<Identifier>& identifier
 ) const {
     if (!identifier) {
-        return {};
+        return std::nullopt;
     }
 
     if (!this->symbols.contains(*identifier)) {
-        return {};
+        return std::nullopt;
     }
-    return {this->symbols.at(*identifier)};
+
+    return this->symbols.at(*identifier);
 }
 
 bool Assembler::assignSymbol(
@@ -214,16 +228,15 @@ bool Assembler::assignSymbol(
     std::int64_t value
 ) {
     if (!identifier) {
-        return identifier.has_value();
+        return false;
     }
-
-    //std::cout << "id: " << identifier.getOk() << '\n';
 
     auto existing = this->resolveSymbol(*identifier);
     if (existing && *existing != value) {
         std::stringstream ss{};
         ss << "redefinition of \'" << *identifier << "\'";
-        return context.error(Error::Level::Fatal, ss.str(), location);
+        context.error(Error::Level::Fatal, ss.str(), location);
+        return false;
     }
 
     this->symbols[identifier.value()] = value;
@@ -233,6 +246,7 @@ bool Assembler::assignSymbol(
 void Assembler::printSymbols(std::ostream& stream) {
     for (auto& symbol : this->symbols) {
         stream
+            << '#'
             << symbol.first
             << std::format(" = {:#04x} ; {}\n", symbol.second, symbol.second);
     }
@@ -265,25 +279,26 @@ std::optional<std::string> getFileName(
     const std::span<std::string_view> includePath,
     const std::optional<Location>& location
 ) {
+    //std::filesystem::path filePath{fileName};
+
     if (fileExists(fileName)) {
         return {fileName};
     } 
 
     for (auto prefix : includePath) {
-        auto stdPath = std::filesystem::path{
-            prefix
-        } / fileName;
+        auto stdPath = std::filesystem::path{prefix} / fileName;
 
         if (fileExists(stdPath)) {
             return stdPath.string();
         }
     }
 
-    std::stringstream ss{};
-    ss << "no such file '" << fileName << "'";
-    return context.error(
-        Error::Level::Fatal, ss.str(), location
+    context.error(
+        Error::Level::Fatal,
+        std::format("no such file '{}'", fileName),
+        location
     );
+    return std::nullopt;
 }
 
 std::optional<FILE*> openFile(

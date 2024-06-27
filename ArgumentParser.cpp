@@ -217,4 +217,3 @@ std::function<bool(const char*)> argumentInt(int* assignTo) {
     };
 }
 
-

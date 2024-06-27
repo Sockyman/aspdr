@@ -20,22 +20,15 @@ void ErrorHandler::displayErrors(std::ostream& stream) {
     }
 }
 
-Failure ErrorHandler::error(const Error& err) {
+void ErrorHandler::error(const Error& err) {
     this->getErrors().push_back(err);
-    return Failure{};
 }
 
-Failure ErrorHandler::error(
+void ErrorHandler::error(
     Error::Level level,
     std::string message,
     std::optional<Location> location
 ) {
-    return this->error({level, location, message});
+    this->error({level, location, message});
 }
-
-Failure::operator bool() const {
-    return false;
-}
-
-void Failure::discard() const {}
 

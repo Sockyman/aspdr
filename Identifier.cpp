@@ -2,7 +2,6 @@
 #include "Context.hpp"
 #include <regex>
 #include <sstream>
-#include <stdexcept>
 #include <algorithm>
 
 Identifier::Identifier() {}; 
@@ -65,7 +64,12 @@ UnqualifiedIdentifier::UnqualifiedIdentifier() {}
 UnqualifiedIdentifier::UnqualifiedIdentifier(
     std::size_t depth,
     Identifier identifier
-) : identifier{identifier}, depth{depth} {}
+): identifier{identifier}, depth{depth} {}
+
+UnqualifiedIdentifier::UnqualifiedIdentifier(
+    std::vector<std::string> id,
+    std::size_t depth
+): identifier{id}, depth{depth} {}
 
 std::optional<Identifier> UnqualifiedIdentifier::qualify(
     Context& context,
@@ -76,11 +80,12 @@ std::optional<Identifier> UnqualifiedIdentifier::qualify(
         std::stringstream ss{};
         ss << "cannot qualify '" << *this << "' with '" << id << "'";
 
-        return context.error(
+        context.error(
             Error::Level::Fatal,
             ss.str(),
             location
         );
+        return std::nullopt;
     }
 
     std::vector<std::string> v{};

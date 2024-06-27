@@ -1,14 +1,15 @@
 #include "Section.hpp"
 #include "Assembler.hpp"
 #include "Context.hpp"
-#include <stdexcept>
+#include "Error.hpp"
+#include "InstructionStatement.hpp"
 #include <sstream>
 #include <format>
 
 Section::Section() {}
 
 Section::Section(SectionInfo* sectionInfo)
-: bytes{}, offset{0}, sectionInfo{sectionInfo} {
+: offset{0}, bytes{}, sectionInfo{sectionInfo} {
 }
 
 bool Section::assertWritable(
@@ -18,7 +19,8 @@ bool Section::assertWritable(
     if (!this->sectionInfo->writable) {
         std::stringstream ss{};
         ss << "section \'" << this->sectionInfo->name << "\' is not writable";
-        return context.error(Error::Level::Fatal, ss.str(), location);
+        context.error(Error::Level::Fatal, ss.str(), location);
+        return false;
     }
     return true;
 }
@@ -98,11 +100,9 @@ bool Section::writeAddress(
 
 bool Section::writeInstruction(
     Context& context,
-    const Location& location,
-    const Instruction& ins,
-    const std::array<Expression*, 2>& expressions
+    const InstructionStatement* statement
 ) {
-    if (ins.name == "call") {
+    /*if (ins.name == "call") {
         this->writeInstruction(context, location, {"phc", {}}, {});
         this->writeInstruction(context, location, {"jmp", ins.mode}, expressions);
         if (ins.mode.destination.address.mode == Mode::Register) {
@@ -110,30 +110,47 @@ bool Section::writeInstruction(
             this->writeInstruction(context, location, {"nop", {}}, {});
         }
         return true;
-    }
+    }*/
+
+    const Instruction& ins{statement->instruction};
 
     auto micros = context.assembler->instructionSet.getInstruction(ins);
 
+    if (!micros && context.macros.contains(ins)) {
+        return context.macros[ins]->assembleBlock(
+            context,
+            statement->arguments,
+            statement->statementId
+        );
+    }
+
     if (!micros) {
         std::stringstream ss{};
-        ss << "instruction \'" << ins << "\' does not exist";
-        return context.error(Error::Level::Fatal, ss.str(), location);
+        ss << "\'" << ins << "\' is not an instruction or macro";
+        context.error(Error::Level::Fatal, ss.str(), statement->location);
+        return false;
     }
 
     auto opcode = context.assembler->instructionSet.getOpcode(ins);
 
-    bool writeResult = this->writeByte(context, location, *opcode);
+    bool result = this->writeByte(context, statement->location, *opcode);
 
-    bool firstResult = this->writeAddress(
+    const std::vector<SizedAddress>& mode = micros->instruction.mode.mode;
+    for (std::size_t i = 0; i < mode.size(); ++i) {
+        result = result
+            && this->writeAddress(context, mode[i].size, statement->arguments[i]);
+    }
+
+    /*bool firstResult = this->writeAddress(
             context,
             (*micros)->instruction.mode.source.size,
             expressions[1]);
     bool secondResult = this->writeAddress(
             context,
             (*micros)->instruction.mode.destination.size,
-            expressions[0]);
+            expressions[0]);*/
 
-    return writeResult && firstResult && secondResult;
+    return result;
 }
 
 bool Section::reserve(
@@ -147,9 +164,10 @@ bool Section::reserve(
     }
 
     if (number.value() < 0) {
-        return context.error(
+        context.error(
             Error::Level::Fatal, "reserve must be positive", location
         );
+        return false;
     }
 
     if (!this->offset) {
@@ -191,11 +209,12 @@ bool Section::changeAddress(
             *this->getAddress()
         );
 
-        return context.error(
+        context.error(
             Error::Level::Fatal,
             message,
             location
         );
+        return false;
     }
     return this->reserve(
         context,
@@ -232,9 +251,10 @@ bool Section::align(
     auto reservation = *number - (*address % *number);
 
     if (reservation < 0) {
-        return context.error(
+        context.error(
             {Error::Level::Fatal, location, "align must be positive"}
         );
+        return false;
     }
     return this->reserve(context, location, reservation);
 }
@@ -244,8 +264,9 @@ bool Section::align(Context& context, const Expression* expr) {
 }
 
 std::optional<std::int64_t> Section::getAddress() {
-    if (!this->offset)
+    if (!this->offset) {
         return {};
+    }
 
     return *this->offset + this->sectionInfo->start;
 }
@@ -273,5 +294,9 @@ bool Section::writeWord(
 
 bool Section::writeWord(Context& context, const Expression* expr) {
     return this->writeInteger(context, expr, 2);
+}
+
+std::span<const char> Section::getBytes() const {
+    return this->bytes;
 }
 

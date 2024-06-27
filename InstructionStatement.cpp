@@ -2,27 +2,26 @@
 #include "Context.hpp"
 #include "Assembler.hpp"
 
-InstructionStatement::InstructionStatement(
-    Location location,
-    Instruction instruction
-) : InstructionStatement{location, instruction, nullptr} {}
+//InstructionStatement::InstructionStatement(
+//    Location location,
+//    std::string name,
+//    const std::vector<std::pair<Address, Expression*>>& mode
+//) : Statement{location} {
+//
+//}
+
 
 InstructionStatement::InstructionStatement(
     Location location,
-    Instruction instruction,
-    Expression* expr
-) : InstructionStatement{location, instruction, expr, nullptr} {}
-
-InstructionStatement::InstructionStatement(
-    Location location,
-    Instruction instruction,
-    Expression* expr0,
-    Expression* expr1
-) : Statement{location}, instruction{instruction}, expressions{expr0, expr1} {}
-
+    std::string name,
+    std::vector<std::pair<Address, Expression*>> mode
+) 
+    : Statement{location},
+    instruction{getInstruction(name, mode)}, arguments{getSecond(mode)} {
+}
 
 InstructionStatement::~InstructionStatement() {
-    for (auto expr : this->expressions) {
+    for (auto expr : this->arguments) {
         delete expr;
     }
 }
@@ -32,9 +31,7 @@ bool InstructionStatement::assemble(Context& context) {
         .getSection()
         .writeInstruction(
             context,
-            this->location,
-            this->instruction,
-            {this->expressions}
+            this
         );
     //return this->assembleInstruction(context, this->instruction);
 }

@@ -11,15 +11,15 @@
 #include <span>
 
 class Context;
+class InstructionStatement;
 
 class Section {
 private:
-public:
-    std::vector<char> bytes;
     std::optional<std::int64_t> offset;
-
+    std::vector<char> bytes;
     SectionInfo* sectionInfo;
 
+public:
     Section();
     Section(SectionInfo* sectionInfo);
 
@@ -68,9 +68,7 @@ public:
 
     bool writeInstruction(
         Context& context,
-        const Location& location,
-        const Instruction& ins,
-        const std::array<Expression*, 2>& expressions
+        const InstructionStatement* instructionStatement
     );
 
     bool reserve(
@@ -80,7 +78,6 @@ public:
     );
 
     bool reserve(Context& context, const Expression* expr);
-
 
     bool changeAddress(
         Context& context,
@@ -101,6 +98,8 @@ public:
     std::optional<std::int64_t> getAddress();
 
     bool assertWritable(Context& context, const Location& location) const;
+
+    std::span<const char> getBytes() const;
 };
 
 #endif

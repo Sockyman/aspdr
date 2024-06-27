@@ -4,8 +4,6 @@
 #include "Identifier.hpp"
 #include "Location.hpp"
 #include <cstdint>
-#include <memory>
-#include <exception>
 
 class Context;
 
@@ -14,9 +12,11 @@ private:
 public:
     Location location;
     Expression(Location location);
-    virtual std::optional<std::int64_t> evaluate(Context& context) const = 0;
-
     virtual ~Expression();
+
+    virtual std::optional<std::int64_t> evaluate(Context& context) const = 0;
+    std::optional<std::int64_t> mustEvaluate(Context& context) const;
+
 };
 
 enum class Binary {

@@ -1,16 +1,10 @@
-#include "Driver.hpp"
 #include "Assembler.hpp"
-#include "Error.hpp"
-#include "parser.hpp"
 #include "ArgumentParser.hpp"
 #include <SpdrFirmware/Instruction.hpp>
 #include <SpdrFirmware/Mode.hpp>
-#include <fstream>
 #include <iostream>
-#include <cstdio>
 #include <optional>
-#include <format>
-#include <functional>
+#include <cstdlib>
 
 // extern const char timestamp[];
 
@@ -28,12 +22,19 @@ int main(int argc, char** argv) {
     bool printSymbols = false;
     std::vector<std::string_view> includePath{};
     SectionMode sectionMode = SectionMode::ROM;
+    const char* prelude = std::getenv("ASPDR_PRELUDE");
+
+    const char* env_include = std::getenv("ASPDR_INCLUDE");
+    if (env_include) {
+        includePath.push_back(env_include);
+    }
 
     ArgumentParser argumentParser{argc, argv, std::clog};
     if (!argumentParser
         .addOpt('o', "outfile", argumentString(&outfile))
         .addOpt('s', "symbols", argumentAssign(&printSymbols, true))
         .addOpt('i', "include", argumentAppendString(&includePath))
+        .addOpt('p', "prelude", argumentString(&prelude))
         .addOpt('r', "ram", argumentAssign(&sectionMode, SectionMode::RAM))
         .addOpt({}, "rom", argumentAssign(&sectionMode, SectionMode::ROM))
         .addOpt('h', "help", argumentAssign(&action, Action::help))
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
     switch (action) {
         case Action::assemble:
         {
-            Assembler assembler{sectionMode, includePath};
+            Assembler assembler{sectionMode, includePath, prelude};
 
             success = assembler.run(infile);
             if (printSymbols) {

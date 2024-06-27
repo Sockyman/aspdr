@@ -36,22 +36,39 @@
 "macro" { return yy::parser::make_MACRO(loc); }
 "endmacro" { return yy::parser::make_ENDMACRO(loc); }
 "variable" { return yy::parser::make_VARIABLE(loc); }
+"provides" { return yy::parser::make_PROVIDES(loc); }
+
+"if" { return yy::parser::make_IF(loc); }
+"else" { return yy::parser::make_ELSE(loc); }
+"elseif" { return yy::parser::make_ELSEIF(loc); }
+"repeat" { return yy::parser::make_REPEAT(loc); }
+"end" { return yy::parser::make_END(loc); }
+"namespace" { return yy::parser::make_NAMESPACE(loc); }
 
 "a" { return yy::parser::make_A(loc); }
 "c" { return yy::parser::make_C(loc); }
 "d" { return yy::parser::make_D(loc); }
 "cd" { return yy::parser::make_CD(loc); }
 "f" { return yy::parser::make_F(loc); }
+"sp" { return yy::parser::make_SP(loc); }
 
 (\.+)([a-zA-Z_][a-zA-Z0-9_]*\.)*([a-zA-Z_][a-zA-Z0-9_]*) {
     return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext), loc);
+}
+#(\.+)([a-zA-Z_][a-zA-Z0-9_]*\.)*([a-zA-Z_][a-zA-Z0-9_]*) {
+    return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext + 1), loc);
 }
 
 ([a-zA-Z_][a-zA-Z0-9_]*\.)+([a-zA-Z_][a-zA-Z0-9_]*) {
     return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext), loc);
 }
+#([a-zA-Z_][a-zA-Z0-9_]*\.)+([a-zA-Z_][a-zA-Z0-9_]*) {
+    return yy::parser::make_UID(UnqualifiedIdentifier::fromString(yytext + 1), loc);
+}
 
 [a-zA-Z_][a-zA-Z_0-9]*  { return yy::parser::make_IDENTIFIER(yytext, loc); }
+#[a-zA-Z_][a-zA-Z_0-9]*  { return yy::parser::make_IDENTIFIER(yytext + 1, loc); }
+
 [0-9]+                  { return yy::parser::make_INTEGER(std::stol(yytext, nullptr, 10), loc); }
 0[xX][0-9a-fA-F]+       { return yy::parser::make_INTEGER(std::stol(yytext, nullptr, 16), loc); }
 0[bB][01]+  {

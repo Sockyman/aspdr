@@ -2,8 +2,7 @@
 #include "Assembler.hpp"
 #include "Error.hpp"
 #include "Context.hpp"
-#include <stdexcept>
-#include <filesystem>
+#include "Block.hpp"
 
 int Statement::statementIdCounter = 0;
 
@@ -25,11 +24,12 @@ bool assembleLabel(
 ) {
     auto address = context.getSection().getAddress();
     if (!address) {
-        return context.error(
+        context.error(
             Error::Level::Pass,
             "cannot get address",
             location
         );
+        return false;
     }
 
     auto qualifiedId = context.qualify(location, id);
@@ -87,6 +87,7 @@ bool SectionStatement::assemble(Context& context) {
 
 AddressStatement::AddressStatement(Location location, Expression* expr)
     : Statement{location}, expr{expr} {}
+
 bool AddressStatement::assemble(Context& context) {
     return context.getSection().changeAddress(context, this->expr);
 }
@@ -172,29 +173,6 @@ bool IncludeStatement::assemble(Context& context) {
 }
 
 
-MacroStatement::MacroStatement(
-    Location location,
-    std::string name,
-    std::vector<Statement*> statements
-): Statement{location}, name{name}, statements{statements} {}
-
-MacroStatement::~MacroStatement() {
-    for (auto& statement : this->statements) {
-        delete statement;
-    }
-}
-
-bool MacroStatement::assemble(Context& context) {
-    context.frames.push({Frame::Type::Macro, this->statementId});
-    for (auto& statement : this->statements) {
-        statement->assemble(context);
-    }
-    context.frames.pop();
-
-
-    return true;
-}
-
 VariableStatement::VariableStatement(
     Location location,
     UnqualifiedIdentifier id,
@@ -213,3 +191,68 @@ bool VariableStatement::assemble(Context& context) {
     return context.changeSection(this->location, s);
 }
 
+
+ProvidesStatement::ProvidesStatement(Location location, std::string fileName)
+: Statement{location}, fileName{fileName} {
+}
+
+bool ProvidesStatement::assemble(Context& context) {
+    return !context.markAsIncluded(this->fileName);
+}
+
+ConditionalStatement::ConditionalStatement(
+    Location location,
+    Expression* condition,
+    Block* body,
+    std::optional<Block*> elseBody
+) : Statement{location}, condition{condition}, body{body}, elseBody{elseBody} {}
+
+bool ConditionalStatement::assemble(Context& context) {
+    auto value = this->condition->mustEvaluate(context);
+    if (!value.has_value()) {
+        return false;
+    }
+
+    if (value.value()) {
+        this->body->assemble(context);
+    } else if (elseBody.has_value()) {
+        this->elseBody.value()->assemble(context);
+    }
+
+    return true;
+}
+
+RepeatStatement::RepeatStatement(
+    Location location,
+    Expression* times,
+    Block* body,
+    std::optional<std::string> counter
+) : Statement{location}, times{times}, body{body}, counter{counter} {}
+
+bool RepeatStatement::assemble(Context& context) {
+    auto value = this->times->mustEvaluate(context);
+    if (!value.has_value()) {
+        return false;
+    }
+
+    context.frames.push(Frame{Frame::Type::Loop, this->statementId});
+
+    for (int i = 0; i < value.value(); ++i) {
+        context.frames.push(Frame{Frame::Type::Index, i});
+
+        if (this->counter) {
+            UnqualifiedIdentifier uid{0, Identifier{{"LOCAL", *this->counter}}};
+            std::optional<Identifier> id{context.qualify(this->location, uid)};
+            if (id) {
+                context.assembler->assignSymbol(context, this->location, *id, i);
+            }
+        }
+
+        this->body->assemble(context);
+        context.frames.pop();
+    }
+
+    context.frames.pop();
+
+    return true;
+}

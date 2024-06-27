@@ -5,7 +5,6 @@
 #include <vector>
 #include <compare>
 #include <iostream>
-#include <cstdint>
 #include <optional>
 #include "Location.hpp"
 
@@ -35,6 +34,7 @@ public:
 
     UnqualifiedIdentifier();
     UnqualifiedIdentifier(std::size_t depth, Identifier identifier);
+    UnqualifiedIdentifier(std::vector<std::string> id, std::size_t depth = 0);
 
 
     std::optional<Identifier> qualify(

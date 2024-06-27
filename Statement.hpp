@@ -8,9 +8,9 @@
 #include <SpdrFirmware/Instruction.hpp>
 #include <SpdrFirmware/Mode.hpp>
 #include <string>
-#include <array>
 
 class Context;
+class Block;
 
 class Statement {
 private:
@@ -25,6 +25,7 @@ public:
 
     virtual ~Statement();
 };
+
 
 class LabelStatement : public Statement {
 public:
@@ -120,17 +121,6 @@ public:
     virtual bool assemble(Context& context) override;
 };
 
-class MacroStatement : public Statement {
-public:
-    std::string name;
-    std::vector<Statement*> statements;
-
-    MacroStatement(Location location, std::string name, std::vector<Statement*> statements);
-    virtual ~MacroStatement() override;
-
-    virtual bool assemble(Context& context) override;
-};
-
 class VariableStatement : public Statement {
 public:
     UnqualifiedIdentifier id;
@@ -141,6 +131,66 @@ public:
 
     virtual bool assemble(Context& context) override;
 };
+
+
+class ProvidesStatement : public Statement {
+public:
+    std::string fileName;
+
+    ProvidesStatement(Location location, std::string fileName);
+    virtual bool assemble(Context& context) override;
+};
+
+class ConditionalStatement : public Statement {
+public:
+    Expression* condition;
+    Block* body;
+    std::optional<Block*> elseBody;
+
+    ConditionalStatement(
+        Location location,
+        Expression* condition,
+        Block* body,
+        std::optional<Block*> elseBody = std::nullopt
+    );
+
+    virtual bool assemble(Context& context) override;
+};
+
+class RepeatStatement : public Statement {
+public:
+    Expression* times;
+    Block* body;
+    std::optional<std::string> counter;
+
+    RepeatStatement(
+        Location location,
+        Expression* times,
+        Block* body,
+        std::optional<std::string> counter = std::nullopt
+    );
+
+    virtual bool assemble(Context& context) override;
+};
+
+template<typename T>
+Instruction getInstruction(std::string name, std::vector<std::pair<Address, T>> elements) {
+    std::vector<SizedAddress> mode{};
+    for (const auto& elem : elements) {
+        mode.push_back(elem.first);
+    }
+
+    return Instruction{name, AddressingMode{mode}};
+}
+
+template<typename T, typename U>
+std::vector<U> getSecond(const std::vector<std::pair<T, U>>& input) {
+    std::vector<U> output;
+    for (const std::pair<T, U>& elem : input) {
+        output.push_back(elem.second);
+    }
+    return output;
+}
 
 #endif
 
